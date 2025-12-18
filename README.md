@@ -207,7 +207,14 @@ NeckenML Analyzer uses a multi-stage pipeline:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+
+- How to report bugs and suggest enhancements
+- Development setup and coding standards
+- Testing requirements and guidelines
+- Pull request process
+
+Whether you're fixing a bug, adding a feature, or improving documentation, your contributions help make Swedish folk music more accessible through technology.
 
 ## License
 
@@ -222,7 +229,7 @@ If you use NeckenML Analyzer in your research, please cite:
   title = {NeckenML Analyzer: Swedish Folk Music Analysis and Classification},
   author = {NeckenML Contributors},
   year = {2025},
-  url = {<repository-url>}
+  url = {https://github.com/svnoak/neckenml-analyzer}
 }
 ```
 
