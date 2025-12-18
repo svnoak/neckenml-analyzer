@@ -247,9 +247,3 @@ print(f"Expected features: {head.EXPECTED_FEATURE_COUNT}")
 if head.model is None:
     print("[WARNING] Model version mismatch - retraining needed")
 ```
-
-## Next Steps
-
-- Study the source code for more examples
-- Join the community and contribute improvements
-- Share your custom AudioSource implementations

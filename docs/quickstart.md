@@ -193,7 +193,3 @@ if success:
 # The classifier will now use your custom model
 result = classifier.classify(features)
 ```
-
-## Next Steps
-
-- [Extending Guide](extending.md) - Implement custom AudioSource, train models

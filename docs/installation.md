@@ -151,8 +151,3 @@ This installs:
 - pytest (testing)
 - black (code formatting)
 - flake8 (linting)
-
-## Next Steps
-
-- [Quick Start Guide](quickstart.md) - Basic usage examples
-- [Extending Guide](extending.md) - Custom audio sources and training
