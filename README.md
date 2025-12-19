@@ -36,9 +36,27 @@ NeckenML Analyzer is a Python package that provides advanced audio analysis and 
 
 ### 1. Install the package
 
+For core functionality (classification with pre-computed features):
+
 ```bash
 pip install neckenml-analyzer
 ```
+
+For full audio analysis capabilities, you'll need additional dependencies that require system libraries:
+
+```bash
+# Install system dependencies (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install -y libsndfile1 ffmpeg gcc g++
+
+# Install audio analysis dependencies
+pip install librosa soundfile madmom
+
+# Note: essentia-tensorflow is not available via pip and requires manual installation
+# See: https://essentia.upf.edu/installing.html
+```
+
+**Note:** The audio analysis features (`AudioAnalyzer`) require `essentia-tensorflow`, which needs to be built from source. If you only need to classify tracks using pre-computed features, the base package is sufficient.
 
 ### 2. Set up PostgreSQL
 

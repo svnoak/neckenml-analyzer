@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neckenml-analyzer"
-version = "0.1.1.post1"
+version = "0.1.1.post2"
 description = "Swedish folk music audio analysis and dance style classification"
 readme = "README.md"
 requires-python = ">=3.9"
