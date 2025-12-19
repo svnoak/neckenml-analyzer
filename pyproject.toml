@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0,<77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "neckenml-analyzer"
-version = "0.1.0"
+version = "0.1.1"
 description = "Swedish folk music audio analysis and dance style classification"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -51,9 +51,9 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/svnoak/neckenml-analyzer"
-Documentation = "https://github.com/yourusername/neckenml-analyzer/blob/main/README.md"
-Repository = "https://github.com/yourusername/neckenml-analyzer"
-Issues = "https://github.com/yourusername/neckenml-analyzer/issues"
+Documentation = "https://github.com/svnoak/neckenml-analyzer/blob/main/README.md"
+Repository = "https://github.com/svnoak/neckenml-analyzer"
+Issues = "https://github.com/svnoak/neckenml-analyzer/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

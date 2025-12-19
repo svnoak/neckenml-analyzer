@@ -5,6 +5,7 @@ neckenml/__init__.py
 neckenml/analyzer/__init__.py
 neckenml/analyzer/audio_analyzer.py
 neckenml/analyzer/folk_authenticity.py
+neckenml/analyzer/reanalysis.py
 neckenml/analyzer/extractors/__init__.py
 neckenml/analyzer/extractors/feel.py
 neckenml/analyzer/extractors/rhythm.py
@@ -28,3 +29,4 @@ neckenml_analyzer.egg-info/SOURCES.txt
 neckenml_analyzer.egg-info/dependency_links.txt
 neckenml_analyzer.egg-info/requires.txt
 neckenml_analyzer.egg-info/top_level.txt
+tests/test_artifact_persistence.py

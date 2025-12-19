@@ -1,8 +1,8 @@
-Metadata-Version: 2.4
+Metadata-Version: 2.2
 Name: neckenml-analyzer
-Version: 0.1.0
+Version: 0.1.1
 Summary: Swedish folk music audio analysis and dance style classification
-Author: NeckenML Analyzer Contributors
+Author: NeckenML Contributors
 License: MIT
 Project-URL: Homepage, https://github.com/svnoak/neckenml-analyzer
 Project-URL: Documentation, https://github.com/svnoak/neckenml-analyzer/blob/main/README.md
@@ -27,6 +27,7 @@ Requires-Dist: scikit-learn>=1.0.0
 Requires-Dist: joblib>=1.0.0
 Requires-Dist: sqlalchemy>=2.0.0
 Requires-Dist: psycopg2-binary>=2.9.0
+Requires-Dist: pgvector>=0.1.0
 Provides-Extra: audio
 Requires-Dist: essentia-tensorflow>=2.1b6.dev0; extra == "audio"
 Requires-Dist: librosa>=0.9.0; extra == "audio"
@@ -37,7 +38,6 @@ Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=3.0.0; extra == "dev"
 Requires-Dist: black>=22.0.0; extra == "dev"
 Requires-Dist: flake8>=4.0.0; extra == "dev"
-Dynamic: license-file
 
 # NeckenML Analyzer
 
@@ -54,7 +54,7 @@ NeckenML Analyzer is a Python package that provides advanced audio analysis and 
 ## Features
 
 - **Comprehensive Audio Analysis**
-  - Tempo and beat detection using Essentia
+  - Tempo and beat detection using Madmom RNN (optimized for rubato in folk music)
   - Meter classification (3/4 ternary vs 2/4/4/4 binary)
   - MusiCNN embeddings for audio texture fingerprinting
   - Vocal vs instrumental detection
@@ -152,27 +152,58 @@ print(f"Secondary styles: {result['secondary_styles']}")
 
 ## Advanced Usage
 
+### Artifact Persistence for Fast Re-analysis
+
+Store expensive-to-compute artifacts once, then re-analyze instantly without touching audio files:
+
+```python
+from neckenml import AudioAnalyzer, compute_derived_features
+
+# Initial analysis with artifact storage
+result = analyzer.analyze_file(
+    file_path="/path/to/track.mp3",
+    return_artifacts=True
+)
+
+features = result["features"]          # Derived features
+artifacts = result["raw_artifacts"]     # Raw data to store
+
+# Store artifacts in database (AnalysisSource.raw_data JSONB column)
+db.store(artifacts)
+
+# Later: Fast re-analysis from stored artifacts (300x faster!)
+new_features = compute_derived_features(artifacts)
+
+# Re-classify with updated model (no audio needed!)
+new_features = compute_derived_features(artifacts, new_classifier=my_model)
+```
+
+**Performance:** Re-classify 1000 tracks in ~2 minutes instead of 8+ hours!
+
+See [Artifact Persistence Documentation](docs/artifact_persistence.md) for details.
+
 ### Custom Audio Source
 
 Implement the `AudioSource` interface for custom audio acquisition:
 
 ```python
 from neckenml.sources import AudioSource
+import os
 
-class S3AudioSource(AudioSource):
-    """Fetch audio from AWS S3"""
+class CloudStorageAudioSource(AudioSource):
+    """Fetch audio from cloud object storage"""
 
-    def __init__(self, bucket_name, region='us-east-1'):
-        self.s3 = boto3.client('s3', region_name=region)
+    def __init__(self, bucket_name, storage_client):
+        self.client = storage_client
         self.bucket = bucket_name
 
     def fetch_audio(self, track_id: str) -> str:
-        """Download audio file from S3 and return local path"""
+        """Download audio file from cloud storage and return local path"""
         local_path = f"/tmp/{track_id}.mp3"
-        self.s3.download_file(
-            Bucket=self.bucket,
-            Key=f"audio/{track_id}.mp3",
-            Filename=local_path
+        self.client.download_file(
+            bucket=self.bucket,
+            key=f"audio/{track_id}.mp3",
+            destination=local_path
         )
         return local_path
 
@@ -182,7 +213,7 @@ class S3AudioSource(AudioSource):
             os.remove(file_path)
 
 # Use custom source
-source = S3AudioSource(bucket_name="my-music-bucket")
+source = CloudStorageAudioSource(bucket_name="my-music-bucket", storage_client=my_client)
 analyzer = AudioAnalyzer(audio_source=source)
 ```
 
@@ -231,13 +262,14 @@ trainer.train_from_data(embeddings, labels)
 
 ## Architecture
 
-neckenml Analyzer uses a multi-stage pipeline:
+NeckenML Analyzer uses a multi-stage pipeline:
 
 1. **Audio Acquisition**: Flexible `AudioSource` interface
-2. **Feature Extraction**: Essentia + Madmom for signal processing
-3. **Embedding Generation**: MusiCNN for 200-dim audio fingerprints
+2. **Feature Extraction**: Madmom RNN for beat/rhythm analysis + Librosa for onsets
+3. **Embedding Generation**: MusiCNN for 217-dim audio fingerprints
 4. **Folk Features**: Domain-specific rhythm and meter analysis
 5. **Classification**: Hierarchical decision tree (metadata → ML → heuristics)
+6. **Artifact Persistence**: Store raw analysis outputs for instant re-classification
 
 ## Requirements
 
@@ -247,7 +279,14 @@ neckenml Analyzer uses a multi-stage pipeline:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+
+- How to report bugs and suggest enhancements
+- Development setup and coding standards
+- Testing requirements and guidelines
+- Pull request process
+
+Whether you're fixing a bug, adding a feature, or improving documentation, your contributions help make Swedish folk music more accessible through technology.
 
 ## License
 
@@ -255,12 +294,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Citation
 
-If you use neckenml Analyzer in your research, please cite:
+If you use NeckenML Analyzer in your research, please cite:
 
 ```bibtex
 @software{neckenml_analyzer,
-  title = {neckenml Analyzer: Swedish Folk Music Analysis and Classification},
-  author = {neckenml Contributors},
+  title = {NeckenML Analyzer: Swedish Folk Music Analysis and Classification},
+  author = {NeckenML Contributors},
   year = {2025},
   url = {https://github.com/svnoak/neckenml-analyzer}
 }
