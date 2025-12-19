@@ -24,14 +24,12 @@ class ClassificationHead:
                 2. ~/.neckenml/custom_style_head.pkl
         """
         if model_path is None:
-            # Try package's bundled model first
             package_model = os.path.join(
                 os.path.dirname(__file__), "..", "models", "pretrained", "custom_style_head.pkl"
             )
             if os.path.exists(package_model):
                 self.model_path = package_model
             else:
-                # Fall back to user's home directory
                 self.model_path = os.path.expanduser("~/.neckenml/custom_style_head.pkl")
         else:
             self.model_path = model_path
@@ -49,7 +47,6 @@ class ClassificationHead:
             self.scaler = data['scaler']
             self.model_version = data.get('version', 0)
             
-            # Version mismatch check
             if self.model_version != self.FEATURE_VERSION:
                 print(f"[WARNING] Model version mismatch! Model: v{self.model_version}, Expected: v{self.FEATURE_VERSION}")
                 print("Clearing model - will need retraining.")
@@ -122,7 +119,7 @@ class ClassificationHead:
         
         if len(valid_embeddings) == 0:
             print(f"[WARNING] No valid samples found! All {len(embeddings)} inputs were the wrong size.")
-            print("   Action: You need to re-analyze tracks to generate new 217-len vectors.")
+            print("Action: You need to re-analyze tracks to generate new 217-len vectors.")
             return
 
         print(f"Training Head on {len(labels)} examples...")
@@ -135,12 +132,10 @@ class ClassificationHead:
         X_scaled = self.scaler.fit_transform(X)
 
         # 2. Fit Model
-        # RandomForest is robust against noise and works well with embeddings
         self.model = RandomForestClassifier(n_estimators=100, random_state=42)
         self.model.fit(X_scaled, y)
 
         # 3. Save
-        # Ensure the directory exists
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
 
         joblib.dump({

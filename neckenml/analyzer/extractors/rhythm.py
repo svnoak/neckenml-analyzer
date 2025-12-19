@@ -51,7 +51,15 @@ class RhythmExtractor:
     def __init__(self):
         import numpy as np
         import madmom.features.downbeats
-        self.proc_beat = madmom.features.downbeats.RNNDownBeatProcessor()
+        import madmom.features.beats
+        import essentia.standard as es
+
+        # Use Madmom for beat tracking (better for rubato and folk music)
+        self.beat_processor = madmom.features.beats.RNNBeatProcessor()
+        self.downbeat_processor = madmom.features.downbeats.RNNDownBeatProcessor()
+
+        # Keep Essentia as fallback
+        self.rhythm_extractor_algo = es.RhythmExtractor2013(method="multifeature")
 
     def get_meter_hint(self, text: str):
         if not text: return None
@@ -60,46 +68,101 @@ class RhythmExtractor:
             if keyword in text: return beats
         return None
 
-    def analyze_beats(self, file_path: str, metadata_context: str = "") -> tuple:
+    def analyze_beats(self, file_path: str, metadata_context: str = "", return_artifacts: bool = False) -> tuple:
         """
-        Extracts beat positions, confidence, and meter.
-        Internally handles normalization to ensure robust onset detection.
+        Extracts beat positions, confidence, and meter using Madmom RNN.
+
+        Madmom is better for folk music because:
+        - Handles rubato (tempo variations) in Polska
+        - Provides beat activation functions (useful for detecting asymmetric patterns)
+        - Better downbeat detection for dance music
+
+        Args:
+            file_path: Path to audio file
+            metadata_context: Optional metadata for meter hints
+            return_artifacts: If True, returns raw Madmom activation functions
+
+        Returns:
+            If return_artifacts=False: (audio, beats, beat_info, ternary_confidence)
+            If return_artifacts=True: (audio, beats, beat_info, ternary_confidence, artifacts_dict)
         """
         import essentia.standard as es
         import numpy as np
+        import madmom.features.beats
 
-        # 1. LOAD & NORMALIZE (Local Scope)
+        # 1. LOAD AUDIO for both Madmom and folk feature extraction
         loader = es.MonoLoader(filename=file_path, sampleRate=44100)
         audio = loader()
 
-        # Normalize solely for the purpose of beat detection
+        # Normalize for folk feature extraction (preserves dynamics for activations)
         max_val = np.max(np.abs(audio))
         if max_val > 0:
-            audio = audio / max_val
+            audio_normalized = audio / max_val
+        else:
+            audio_normalized = audio
 
-        # 2. RHYTHM EXTRACTOR
-        rhythm_extractor = es.RhythmExtractor2013(method="multifeature")
-        bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
+        # 2. MADMOM BEAT TRACKING
+        # Process downbeats (gives us both beats and downbeats)
+        activations = self.downbeat_processor(file_path)
 
-        # 3. METER DETECTION
-        ternary_confidence = 0.0
-        if len(beats) > 12:
-            ternary_confidence = self._calculate_ternary_confidence(beats)
+        # Use DBNDownBeatTrackingProcessor to get beats from activations
+        from madmom.features.downbeats import DBNDownBeatTrackingProcessor
+        tracker = DBNDownBeatTrackingProcessor(beats_per_bar=[3, 4], fps=100)
+        beats_and_downbeats = tracker(activations)
 
-        # Determine beats per bar based on ternary confidence
-        # High confidence (>0.65) means it's likely 3/4 time (vals, polska, hambo)
-        # Otherwise default to 4/4 time (schottis, polka, etc.)
-        beats_per_bar = 3 if ternary_confidence > 0.65 else 4
+        # beats_and_downbeats format: [[time, beat_number], ...]
+        # beat_number: 1 = downbeat, 2/3/4 = other beats
 
-        # Create a simplified beat_info array [time, beat_number]
-        beat_info = []
-        measure_count = 1
-        for t in beats:
-            beat_info.append([t, measure_count])
-            measure_count += 1
-            if measure_count > beats_per_bar: measure_count = 1
+        # 3. EXTRACT BEATS AND METER
+        if len(beats_and_downbeats) == 0:
+            # Fallback to simple beat tracking if downbeat detection fails
+            beat_tracker = madmom.features.beats.DBNBeatTrackingProcessor(fps=100)
+            beats = beat_tracker(self.beat_processor(file_path))
 
-        return audio, beats, np.array(beat_info), ternary_confidence
+            # Create dummy beat_info (no downbeat information)
+            beat_info = [[t, 1] for t in beats]
+            beats_per_bar = 4
+            ternary_confidence = 0.5
+        else:
+            beats = beats_and_downbeats[:, 0]  # Extract just the times
+            beat_positions = beats_and_downbeats[:, 1]  # Extract beat numbers
+
+            # Detect meter from beat positions
+            # Count how many beats per bar (max beat number)
+            beats_per_bar = int(np.max(beat_positions)) if len(beat_positions) > 0 else 4
+
+            # Ternary confidence based on detected meter
+            ternary_confidence = 0.9 if beats_per_bar == 3 else 0.2
+
+            # Build beat_info
+            beat_info = beats_and_downbeats.tolist()
+
+        # 4. Calculate BPM
+        if len(beats) > 1:
+            intervals = np.diff(beats)
+            median_interval = np.median(intervals)
+            bpm = 60.0 / median_interval if median_interval > 0 else 120.0
+        else:
+            bpm = 120.0
+
+        # Convert beat_info to numpy array
+        beat_info = np.array(beat_info)
+
+        if return_artifacts:
+            # Store ALL raw Madmom outputs - this is the key data!
+            artifacts = {
+                "source": "madmom_rnn_downbeat",
+                "bpm": float(bpm),
+                "beats": beats.tolist() if hasattr(beats, 'tolist') else list(beats),
+                "beat_positions": beat_positions.tolist() if hasattr(beat_positions, 'tolist') else [],
+                "activation_functions": activations.tolist() if hasattr(activations, 'tolist') else [],  # Raw RNN output!
+                "beats_per_bar": int(beats_per_bar),
+                "ternary_confidence": float(ternary_confidence),
+                "fps": 100  # Activations frame rate
+            }
+            return audio_normalized, beats, beat_info, ternary_confidence, artifacts
+
+        return audio_normalized, beats, beat_info, ternary_confidence
     
     def _calculate_ternary_confidence(self, beat_times):
         """
@@ -150,13 +213,21 @@ class RhythmExtractor:
         
         return np.clip(conf, 0.0, 1.0)
 
-    def extract_folk_features(self, beat_times, audio_signal):
+    def extract_folk_features(self, beat_times, audio_signal, return_artifacts=False):
         """
         Calculates specific features relevant to folk dance styles.
+
+        Args:
+            beat_times: Beat positions in seconds
+            audio_signal: Audio waveform
+            return_artifacts: If True, returns (features_dict, artifacts_dict)
         """
         import numpy as np
-        
-        if len(beat_times) < 12: return np.zeros(8)
+
+        if len(beat_times) < 12:
+            if return_artifacts:
+                return np.zeros(8), {}
+            return np.zeros(8)
 
         # 1. Intervals & BPM
         ibis = np.diff(beat_times)
@@ -208,7 +279,7 @@ class RhythmExtractor:
             activations=activations
         )
 
-        return {
+        features = {
             "bpm": float(bpm),
             "avg_ibi": float(avg_ibi),
             "punchiness": float(punchiness),
@@ -219,6 +290,16 @@ class RhythmExtractor:
             "hambo_score": float(hambo_score),
             "bpm_stability": float(bpm_stability)
         }
+
+        if return_artifacts:
+            artifacts = {
+                "beat_activations": [float(a) for a in activations],
+                "intervals": ibis.tolist() if hasattr(ibis, 'tolist') else list(ibis),
+                "triplet_variances": triplet_variances
+            }
+            return features, artifacts
+
+        return features
     
     def _calculate_ternary_signatures(self, ratios, triplet_variances, intervals, activations):
         import numpy as np

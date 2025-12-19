@@ -1,7 +1,4 @@
-from typing import Optional, Tuple
-from sqlalchemy.orm import Session
-from app.core.models import Track
-from app.core.music_theory import categorize_tempo
+from typing import Optional, Tuple, Callable, Any
 
 
 class StyleClassifier:
@@ -17,18 +14,28 @@ class StyleClassifier:
     This allows admin updates without code redeployment.
     """
 
-    # ====================================================
-    # 1. MAIN ENTRY POINT
-    # ====================================================
+    def __init__(
+        self,
+        db: Any = None,
+        categorize_tempo_fn: Optional[Callable] = None,
+        get_keywords_fn: Optional[Callable] = None
+    ):
+        """
+        Initialize StyleClassifier.
 
-    def __init__(self, db: Session = None):
-        from app.workers.audio.style_head import ClassificationHead
-        # Load the Brain (AI Model)
+        Args:
+            db: Database session (optional, for keyword lookups)
+            categorize_tempo_fn: Function to categorize tempo (style, effective_bpm) -> tempo_category
+            get_keywords_fn: Function to get keywords from database (db) -> list of (keyword, main_style, sub_style)
+        """
+        from neckenml.classifier.style_head import ClassificationHead
         self.head = ClassificationHead()
-        # Store db session for keyword lookups
-        self._db = db
 
-    def classify(self, track: Track, analysis: dict) -> list:
+        self._db = db
+        self._categorize_tempo = categorize_tempo_fn
+        self._get_keywords = get_keywords_fn
+
+    def classify(self, track: Any, analysis: dict) -> list:
         """
         Returns a list of classifications (Primary + Secondaries).
         """
@@ -40,7 +47,10 @@ class StyleClassifier:
         
         # Calculate Multiplier & Effective BPM (Normalization)
         primary['multiplier'], primary['effective_bpm'] = self._calculate_mpm(primary['style'], raw_bpm)
-        primary['dance_tempo'] = categorize_tempo(primary['style'], primary['effective_bpm'])
+        if self._categorize_tempo:
+            primary['dance_tempo'] = self._categorize_tempo(primary['style'], primary['effective_bpm'])
+        else:
+            primary['dance_tempo'] = None
         primary['type'] = 'Primary'
         
         results.append(primary)
@@ -52,7 +62,7 @@ class StyleClassifier:
         return results
 
     # ====================================================
-    # 3. CORE LOGIC
+    # 1. CORE LOGIC
     # ====================================================
 
     def _get_primary_style(self, track, analysis):
@@ -65,7 +75,7 @@ class StyleClassifier:
 
         # --- 1. GOD RULE: Metadata ---
         # If the artist calls it a Hambo, it is a Hambo.
-        print(f"   🎯 Checking metadata for: {track.title}")
+        print(f"Checking metadata for: {track.title}")
         main_style, sub_style = self._check_metadata(track)
         if main_style:
             style_desc = main_style + (f"/{sub_style}" if sub_style else "")
@@ -78,7 +88,7 @@ class StyleClassifier:
                 "source": "metadata"
             }
         
-        # --- 2. THE BRAIN: AI Suggestion ---
+        # --- 2. ML Suggestion ---
         # Check if the neural network recognizes the texture/rhythm fingerprint
         embedding = analysis.get("embedding")
         if embedding:
@@ -93,21 +103,20 @@ class StyleClassifier:
 
         # --- 3. FALLBACK: Heuristics (Math + Structure) ---
         # These are educated guesses - confidence reflects uncertainty
-        
         meter = analysis.get("meter", "4/4")
         swing = analysis.get("swing_ratio", 1.0)
         bpm = analysis.get("tempo_bpm", 0)
         ratios = analysis.get("avg_beat_ratios", [0.33, 0.33, 0.33])
         punchiness = analysis.get("punchiness", 0)
         
-        # NEW: Polska/Hambo signature scores from rhythm analysis
+        # Polska/Hambo signature scores from rhythm analysis
         polska_score = analysis.get("polska_score", 0.0)
         hambo_score = analysis.get("hambo_score", 0.0)
         
-        # NEW: Ternary confidence helps detect Polska misidentified as binary
+        # Ternary confidence helps detect Polska misidentified as binary
         ternary_confidence = analysis.get("ternary_confidence", 0.5)
         
-        # New: Structural Analysis
+        # Structural Analysis
         bars = analysis.get("bars", [])
         sections = analysis.get("sections", [])
         
@@ -184,7 +193,7 @@ class StyleClassifier:
             if punchiness < 0.1: 
                 return heuristic_result("Slängpolska", 0.35, "Smooth/Flowing Texture")
 
-            # NEW: If we have ANY Polska signal, prefer it over Unknown
+            # If we have ANY Polska signal, prefer it over Unknown
             if polska_score > 0.25:
                 return heuristic_result("Polska", 0.30, f"Weak Polska signal ({polska_score:.2f})")
 
@@ -326,7 +335,7 @@ class StyleClassifier:
                 "reason": reason,
                 "multiplier": mult,
                 "effective_bpm": eff,
-                "dance_tempo": categorize_tempo(new_style, eff)
+                "dance_tempo": self._categorize_tempo(new_style, eff) if self._categorize_tempo else None
             })
 
         if style == "Snoa":
@@ -378,29 +387,20 @@ class StyleClassifier:
         Returns:
             Tuple of (main_style, sub_style) or (None, None) if no match.
         """
-        from app.services.style_keywords_cache import get_sorted_keywords
-
-        # Get database session - use stored session or create new one
-        db = self._db
-        should_close = False
-        if db is None:
-            from app.core.database import SessionLocal
-            db = SessionLocal()
-            should_close = True
+        if not self._get_keywords or not self._db:
+            return (None, None)
 
         try:
             artist_names = []
-            if track.artist_links:
+            if hasattr(track, 'artist_links') and track.artist_links:
                 artist_names = [link.artist.name for link in track.artist_links]
 
-            album_title = track.album.title if track.album else ""
-            track_title = track.title.lower()
+            album_title = track.album.title if hasattr(track, 'album') and track.album else ""
+            track_title = track.title.lower() if hasattr(track, 'title') else ""
 
-            # Debug: Log what we're searching
-            print(f"   🔍 Metadata check - Title: '{track_title}', Album: '{album_title}'")
+            print(f"Metadata check - Title: '{track_title}', Album: '{album_title}'")
 
-            # Get keywords from cache (already sorted longest-first)
-            sorted_keywords = get_sorted_keywords(db)
+            sorted_keywords = self._get_keywords(self._db)
 
             # 1. FIRST: Check track title (highest priority)
             for keyword, main_style, sub_style in sorted_keywords:
@@ -424,6 +424,6 @@ class StyleClassifier:
                     return (main_style, sub_style)
 
             return (None, None)
-        finally:
-            if should_close:
-                db.close()
+        except Exception as e:
+            print(f"   Metadata check error: {e}")
+            return (None, None)

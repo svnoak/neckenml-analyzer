@@ -1,4 +1,4 @@
-def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None):
+def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None, vocal_model=None):
     """
     Detects if vocals are present using a pre-trained Essentia model,
     but with a 'Noise Gate' to prevent analyzing silence/background noise.
@@ -7,6 +7,7 @@ def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None):
         audio_array: Audio signal array
         sample_rate: Sample rate of audio (default 16000)
         model_dir: Directory containing model files (default ~/.neckenml/models)
+        vocal_model: Optional pre-initialized TensorflowPredictMusiCNN model (to avoid warnings)
     """
     import essentia.standard as es
     import essentia
@@ -47,16 +48,18 @@ def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None):
     # 2. RUN DEEP LEARNING MODEL
     # Now we know there is actual signal, we run the heavy model.
     try:
-        vocal_model = es.TensorflowPredictMusiCNN(
-            graphFilename=model_path,
-            output="model/Sigmoid"
-        )
-        
+        # Use provided model instance to avoid "No network created" warning
+        if vocal_model is None:
+            vocal_model = es.TensorflowPredictMusiCNN(
+                graphFilename=model_path,
+                output="model/Sigmoid"
+            )
+
         # The model expects normalized inputs usually, but since we are handling
         # the gating ourselves, we can pass the audio. However, for the *prediction*
-        # specifically, it is often safer to normalize the specific chunk going into 
+        # specifically, it is often safer to normalize the specific chunk going into
         # the Neural Net to match how it was trained, even if we preserve dynamics elsewhere.
-        
+
         # Create a normalized copy just for this specific predictor
         max_val = np.max(np.abs(audio_array))
         if max_val > 0:
@@ -65,11 +68,11 @@ def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None):
             input_audio = audio_array
 
         predictions = vocal_model(input_audio)
-        
+
         # Predictions is usually [instrumental_prob, vocal_prob]
         # We average over the time frames to get one score for the file
         avg_preds = np.mean(predictions, axis=0)
-        
+
         # Index 0 is usually instrumental, Index 1 is vocal for this specific model
         instrumental_score = avg_preds[0]
         vocal_score = avg_preds[1]
@@ -79,7 +82,13 @@ def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None):
         return {
             "is_instrumental": bool(is_instrumental),
             "confidence": float(vocal_score), # How confident are we it has vocals?
-            "label": "instrumental" if is_instrumental else "voice"
+            "label": "instrumental" if is_instrumental else "voice",
+            # Raw artifacts for persistence
+            "raw_artifacts": {
+                "predictions": predictions.tolist() if hasattr(predictions, 'tolist') else predictions,
+                "instrumental_score": float(instrumental_score),
+                "vocal_score": float(vocal_score)
+            }
         }
 
     except Exception as e:

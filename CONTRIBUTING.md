@@ -1,6 +1,6 @@
-# Contributing to Neckenml Analyzer
+# Contributing to NeckenML Analyzer
 
-Thank you for your interest in contributing to Neckenml Analyzer! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to NeckenML Analyzer! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -139,7 +139,7 @@ We welcome code contributions! Here are some areas where help is needed:
 
 6. **Verify installation:**
    ```bash
-   python -c "from neckenml import AudioAnalyzer; print('✅ Setup complete!')"
+   python -c "from neckenml import AudioAnalyzer; print('Setup complete!')"
    ```
 
 ### Project Structure
@@ -441,4 +441,4 @@ Contributors are recognized in:
 - Release notes
 - Git commit history
 
-Thank you for contributing to Neckenml Analyzer! Your efforts help preserve and promote Swedish folk music culture through technology.
+Thank you for contributing to NeckenML Analyzer! Your efforts help preserve and promote Swedish folk music culture through technology.

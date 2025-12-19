@@ -2,7 +2,6 @@ import traceback
 import os
 from typing import Optional
 
-# Local imports
 from .extractors.vocal import analyze_vocal_presence
 from .extractors.swing import calculate_swing_ratio
 from .extractors.feel import analyze_feel
@@ -26,6 +25,7 @@ class AudioAnalyzer:
         from .extractors.structure import StructureExtractor
         from neckenml.classifier.style_head import ClassificationHead
         from .folk_authenticity import FolkAuthenticityDetector
+        import essentia.standard as es
 
         self.audio_source = audio_source
         self.model_dir = self._get_model_dir(model_dir)
@@ -35,7 +35,14 @@ class AudioAnalyzer:
         self.head = ClassificationHead()
         self.folk_detector = FolkAuthenticityDetector(manual_review_threshold=0.6)
 
+        self.loudness_algo = es.LoudnessEBUR128()
+        self.rms_algo = es.RMS()
+        self.zcr_algo = es.ZeroCrossingRate()
+        self.onset_rate_algo = es.OnsetRate()
+        self.envelope_algo = es.Envelope(attackTime=10, releaseTime=50)
+
         self.tf_embeddings = None
+        self.vocal_model = None
         self._load_ai_models()
 
     def _get_model_dir(self, model_dir: Optional[str]) -> str:
@@ -64,10 +71,23 @@ class AudioAnalyzer:
                 graphFilename=model_backbone,
                 output="model/dense/BiasAdd"
             )
+
+            # Load vocal model
+            vocal_model_path = os.path.join(self.model_dir, "voice_instrumental-musicnn-msd-1.pb")
+            if os.path.exists(vocal_model_path):
+                self.vocal_model = es.TensorflowPredictMusiCNN(
+                    graphFilename=vocal_model_path,
+                    output="model/Sigmoid"
+                )
+            else:
+                print(f"    Vocal model file missing: {vocal_model_path}")
+                self.vocal_model = None
+
             print("Pipeline loaded.")
         except Exception as e:
             print(f"Models failed to load: {e}")
             self.tf_embeddings = None
+            self.vocal_model = None
 
     def analyze(self, track_id: str, metadata_context: str = "") -> dict:
         """
@@ -102,25 +122,24 @@ class AudioAnalyzer:
         Extracts robust, crash-proof structural proxies.
         Returns: [RMS (Dynamics), ZCR (Texture), OnsetRate (Busyness)]
         """
-        import essentia.standard as es
         try:
             # 1. Dynamics (Standard Deviation of RMS amplitude)
-            rms = es.RMS()(audio)
-            
+            rms = self.rms_algo(audio)
+
             # 2. Texture (Zero Crossing Rate)
-            zcr = es.ZeroCrossingRate()(audio)
-            
+            zcr = self.zcr_algo(audio)
+
             # 3. Busyness (Onset Rate)
             # This is valuable for distinguishing "busy" Polskas from "smooth" Waltzes
             # OnsetRate returns [onset_rate, num_onsets]
-            onset_rate, _ = es.OnsetRate()(audio)
-            
+            onset_rate, _ = self.onset_rate_algo(audio)
+
             return [float(rms), float(zcr), float(onset_rate)]
         except Exception:
             # Fallback (return 3 zeros since we expect 3 features now)
             return [0.0, 0.0, 0.0]
 
-    def analyze_file(self, file_path: str, metadata_context: str = "") -> dict:
+    def analyze_file(self, file_path: str, metadata_context: str = "", return_artifacts: bool = False) -> dict:
         import essentia.standard as es
         import numpy as np
         try:
@@ -131,15 +150,16 @@ class AudioAnalyzer:
 
             # --- ROBUST LOUDNESS CALCULATION ---
             # This handles the "length-1 array" crash by force-flattening the result.
+            # Using reusable algorithm instance to avoid "No network created" warning
             loudness = -14.0 # Default
             try:
                 stereo_audio = np.stack([audio_16k, audio_16k], axis=1)
-                loudness_results = es.LoudnessEBUR128()(stereo_audio)
-                
+                loudness_results = self.loudness_algo(stereo_audio)
+
                 # Unwrap: Essentia might return a scalar, a 1D array, or a tuple of arrays.
                 # We want the first value (Integrated Loudness).
                 first_val = loudness_results[0]
-                
+
                 # Convert to numpy array to unify handling, then flatten and grab index 0.
                 # This works for scalars (becomes [x]), 1D arrays ([x, x]), etc.
                 loudness = float(np.array(first_val).flatten()[0])
@@ -160,18 +180,33 @@ class AudioAnalyzer:
 
             # --- 2. VOCALS ---
             print(f"   [ANALYSIS] Doing voice detection...")
-            vocal_data = analyze_vocal_presence(audio_16k, model_dir=self.model_dir)
+            vocal_data = analyze_vocal_presence(audio_16k, model_dir=self.model_dir, vocal_model=self.vocal_model)
 
             # --- 3. RHYTHM ---
             print(f"   [ANALYSIS] Doing rhythm analysis...")
-            act, beat_times, beat_info, ternary_confidence = self.rhythm_extractor.analyze_beats(file_path, metadata_context)
-            folk_features = self.rhythm_extractor.extract_folk_features(beat_times, act)
+            if return_artifacts:
+                act, beat_times, beat_info, ternary_confidence, beat_artifacts = self.rhythm_extractor.analyze_beats(
+                    file_path, metadata_context, return_artifacts=True
+                )
+                folk_features, rhythm_artifacts = self.rhythm_extractor.extract_folk_features(beat_times, act, return_artifacts=True)
+            else:
+                act, beat_times, beat_info, ternary_confidence = self.rhythm_extractor.analyze_beats(file_path, metadata_context)
+                folk_features = self.rhythm_extractor.extract_folk_features(beat_times, act)
+                beat_artifacts = {}
+                rhythm_artifacts = {}
+
             bars = self.rhythm_extractor.get_bars(beat_info)
 
             # --- 4. FEEL ---
             print(f"   [ANALYSIS] Doing swing & feel analysis...")
-            swing_ratio = calculate_swing_ratio(file_path, beat_times)
-            feel_data = analyze_feel(audio_16k, beat_times, swing_ratio)
+            if return_artifacts:
+                swing_ratio, swing_artifacts = calculate_swing_ratio(file_path, beat_times, return_artifacts=True)
+                feel_data, feel_artifacts = analyze_feel(audio_16k, beat_times, swing_ratio, self.envelope_algo, return_artifacts=True)
+            else:
+                swing_ratio = calculate_swing_ratio(file_path, beat_times)
+                feel_data = analyze_feel(audio_16k, beat_times, swing_ratio, self.envelope_algo)
+                swing_artifacts = {}
+                feel_artifacts = {}
 
             # --- 5. STATS ---
             print(f"   [ANALYSIS] Extracting layout stats...")
@@ -281,6 +316,52 @@ class AudioAnalyzer:
                 "folk_authenticity_breakdown": folk_auth_result['confidence_breakdown'],
                 "folk_authenticity_interpretation": folk_auth_result['interpretation']
             }
+
+            # If artifacts requested, build and return them separately
+            if return_artifacts:
+                # Get audio duration
+                import librosa
+                duration = librosa.get_duration(path=file_path)
+
+                artifacts = {
+                    "version": "1.0.0",
+                    "rhythm_extractor": {
+                        # Store ALL raw outputs from Essentia RhythmExtractor2013
+                        **beat_artifacts,  # Contains: bpm, beats, beats_confidence, beats_intervals, estimates, beats_per_bar, ternary_confidence
+                        "beat_info": beat_info.tolist() if hasattr(beat_info, 'tolist') else beat_info,
+                        "bars": [float(b) for b in bars]
+                    },
+                    "musicnn": {
+                        "raw_embeddings": raw_embeddings.tolist() if hasattr(raw_embeddings, 'tolist') else raw_embeddings,
+                        "avg_embedding": avg_embedding.tolist() if hasattr(avg_embedding, 'tolist') else avg_embedding
+                    },
+                    "vocal": vocal_data.get('raw_artifacts', {
+                        "instrumental_score": float(vocal_data.get('confidence', 0.0)),
+                        "vocal_score": 1.0 - float(vocal_data.get('confidence', 0.0))
+                    }),
+                    "audio_stats": {
+                        "loudness_lufs": float(loudness),
+                        "rms": float(layout_stats[0]),
+                        "zcr": float(layout_stats[1]),
+                        "onset_rate": float(layout_stats[2]),
+                        "duration_seconds": float(duration)
+                    },
+                    "onsets": swing_artifacts,
+                    "structure": {
+                        "sections": [float(s) for s in sections],
+                        "section_labels": section_labels
+                    },
+                    "dynamics": {
+                        **feel_artifacts,
+                        **rhythm_artifacts
+                    }
+                }
+
+                result_with_artifacts = {
+                    "features": self._sanitize_for_json(raw_result),
+                    "raw_artifacts": self._sanitize_for_json(artifacts)
+                }
+                return result_with_artifacts
 
             return self._sanitize_for_json(raw_result)
 

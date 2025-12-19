@@ -1,7 +1,14 @@
-def analyze_feel(audio, beat_times, swing_ratio):
+def analyze_feel(audio, beat_times, swing_ratio, envelope_algo=None, return_artifacts=False):
     """
     Analyzes the texture of the audio (Staccato vs Legato, Bounciness)
     independent of the recording volume.
+
+    Args:
+        audio: Audio signal
+        beat_times: Beat timing information
+        swing_ratio: Swing ratio value
+        envelope_algo: Optional pre-initialized Envelope algorithm (to avoid warnings)
+        return_artifacts: If True, returns (result_dict, artifacts_dict)
     """
     import numpy as np
     import essentia.standard as es
@@ -21,7 +28,9 @@ def analyze_feel(audio, beat_times, swing_ratio):
     # --- 2. CALCULATE ENVELOPE ---
     # The envelope traces the "outline" of the volume over time.
     # We use Essentia's Envelope follower.
-    envelope_algo = es.Envelope(attackTime=10, releaseTime=50) # Fast attack to catch fiddle bows
+    # Use provided algorithm instance to avoid "No network created" warning
+    if envelope_algo is None:
+        envelope_algo = es.Envelope(attackTime=10, releaseTime=50)
     envelope = envelope_algo(norm_audio)
 
     # --- 3. ARTICULATION (Staccato vs. Legato) ---
@@ -65,8 +74,19 @@ def analyze_feel(audio, beat_times, swing_ratio):
     bounciness_score = (swing_ratio * 0.7) + (dynamic_punch * 0.3)
     bounciness_score = np.clip(bounciness_score, 0.0, 1.0)
 
-    return {
+    result = {
         'articulation': float(articulation_score),
         'bounciness': float(bounciness_score),
         'dynamic_punch': float(dynamic_punch) # Useful debug metric
     }
+
+    if return_artifacts:
+        # Downsample envelope to reduce storage (every 100th sample)
+        downsampled_envelope = envelope[::100].tolist() if hasattr(envelope, 'tolist') else list(envelope[::100])
+        artifacts = {
+            "envelope": downsampled_envelope,
+            "envelope_sample_rate": 16000 / 100  # Effective sample rate after downsampling
+        }
+        return result, artifacts
+
+    return result

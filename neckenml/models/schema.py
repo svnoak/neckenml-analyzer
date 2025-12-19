@@ -52,8 +52,73 @@ class AnalysisSource(Base):
     """
     Stores raw analysis data from different analysis sources.
 
-    The raw_data JSONB field contains the complete analysis results,
-    including embeddings, features, and metadata.
+    The raw_data JSONB field contains expensive-to-compute artifacts that enable
+    fast re-analysis without re-processing audio files. This includes:
+
+    Structure:
+    {
+        "version": "1.0.0",  # Schema version for future migrations
+
+        # MADMOM RNN BEAT DETECTION (most expensive, enables all rhythm re-analysis)
+        "rhythm_extractor": {
+            "source": "madmom_rnn_downbeat",      # Which algorithm was used
+            "bpm": float,                          # Detected tempo
+            "beats": [float, ...],                 # Beat positions in seconds
+            "beat_positions": [int, ...],          # Beat numbers (1=downbeat, 2/3/4=other)
+            "activation_functions": [[float, ...], ...],  # Raw RNN activations (time-series)
+            "beats_per_bar": int,                  # Detected meter (3 or 4)
+            "ternary_confidence": float,           # Meter confidence (0-1)
+            "fps": int,                            # Activation function frame rate
+            "beat_info": [[time, beat_num], ...],  # Combined beat data
+            "bars": [float, ...]                   # Bar positions in seconds
+        },
+
+        # NEURAL NETWORK OUTPUTS
+        "musicnn": {
+            "raw_embeddings": [[float, ...], ...],  # Time-series embeddings (optional, large)
+            "avg_embedding": [float, ...]           # 200-dim averaged embedding
+        },
+
+        "vocal": {
+            "predictions": [[float, float], ...],  # Time-series [instrumental, vocal] (optional)
+            "instrumental_score": float,           # Aggregated instrumental probability
+            "vocal_score": float                   # Aggregated vocal probability
+        },
+
+        # AUDIO STATISTICS (enables folk authenticity and other derived features)
+        "audio_stats": {
+            "loudness_lufs": float,
+            "rms": float,
+            "zcr": float,
+            "onset_rate": float,
+            "duration_seconds": float
+        },
+
+        # SUB-BEAT ANALYSIS (for swing recalculation)
+        "onsets": {
+            "librosa_onset_times": [float, ...]  # Onset detections from librosa
+        },
+
+        # STRUCTURE ANALYSIS
+        "structure": {
+            "mfcc_matrix": [[float, ...], ...],  # Full MFCC coefficients (optional, large)
+            "sections": [float, ...],            # Section boundaries in seconds
+            "section_labels": [str, ...]         # Section labels (A, B, etc.)
+        },
+
+        # DYNAMICS (for articulation/bounciness recalculation)
+        "dynamics": {
+            "envelope": [float, ...],        # Amplitude envelope (optional, can be downsampled)
+            "beat_activations": [float, ...] # Energy at each beat position
+        }
+    }
+
+    With these artifacts stored, the following can be quickly re-calculated without audio:
+    - Swing ratio, punchiness, polska/hambo scores
+    - Articulation, bounciness
+    - Folk features, BPM stability
+    - New classification models from embeddings
+    - Structure refinement with different style hints
     """
     __tablename__ = "analysis_sources"
 

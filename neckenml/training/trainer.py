@@ -95,7 +95,7 @@ class TrainingService:
         """
         from neckenml.models.schema import Track, TrackDanceStyle, AnalysisSource
 
-        print("🧠 Querying database for training data...")
+        print("Querying database for training data...")
 
         # Build query
         query = (
@@ -154,7 +154,7 @@ class TrainingService:
         import pandas as pd
         import json
 
-        print(f"📊 Loading training data from {csv_path}...")
+        print(f"Loading training data from {csv_path}...")
 
         try:
             df = pd.read_csv(csv_path)
