@@ -82,6 +82,7 @@ jobs:
           context: .
           file: Dockerfile.test
           push: false
+          load: true
           tags: neckenml-analyzer:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
