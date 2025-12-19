@@ -41,14 +41,6 @@ jobs:
           twine check dist/*
           echo "Package verification passed"
 
-      - name: Publish to Test PyPI (optional)
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: |
-          twine upload --repository testpypi dist/* || echo "Test PyPI upload failed (may already exist)"
-
       - name: Publish to PyPI
         if: github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@release/v1

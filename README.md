@@ -139,7 +139,7 @@ new_features = compute_derived_features(artifacts, new_classifier=my_model)
 
 **Performance:** Re-classify 1000 tracks in ~2 minutes instead of 8+ hours!
 
-See [Artifact Persistence Documentation](docs/artifact_persistence.md) for details.
+See [Artifact Persistence Documentation](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/artifact_persistence.md) for details.
 
 ### Custom Audio Source
 
@@ -215,9 +215,9 @@ trainer.train_from_data(embeddings, labels)
 
 ## Documentation
 
-- [Installation Guide](docs/installation.md) - Detailed setup instructions
-- [Quick Start](docs/quickstart.md) - Getting started examples
-- [Extending](docs/extending.md) - Custom AudioSource implementations and model training
+- [Installation Guide](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/installation.md) - Detailed setup instructions
+- [Quick Start](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/quickstart.md) - Getting started examples
+- [Extending](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/extending.md) - Custom AudioSource implementations and model training
 
 ## Architecture
 
