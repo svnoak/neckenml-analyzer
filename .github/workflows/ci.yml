@@ -75,7 +75,8 @@ jobs:
 
           COPY . .
 
-          RUN pip install --no-cache-dir -e ".[audio]"
+          RUN pip install --upgrade pip setuptools wheel && \
+              pip install --no-cache-dir -e ".[audio]"
 
           CMD ["python", "-c", "from neckenml import AudioAnalyzer; print('NeckenML imports successfully')"]
           EOF
@@ -108,14 +109,13 @@ jobs:
 
       - name: Verify package metadata
         run: |
-          pip install build twine
+          pip install build twine readme-renderer[md]
           python -m build
           twine check dist/*
           echo "Package metadata is valid"
 
       - name: Check README renders on PyPI
         run: |
-          pip install readme-renderer
           python -m readme_renderer README.md -o /tmp/README.html
           echo "README will render correctly on PyPI"
 
