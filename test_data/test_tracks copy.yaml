@@ -1,0 +1,873 @@
+# Test Track Dataset for Dancestyle Classification
+#
+# Instructions:
+# 1. Add audio files to test_data/audio/<style>/ folders
+# 2. Fill in the metadata below for each test track
+# 3. Mark difficulty: easy (textbook example), medium (typical), hard (borderline case)
+# 4. Add notes about what makes each track challenging or characteristic
+
+tracks:
+  # ============================================================================
+  # POLSKA (3/4 asymmetric, rubato, characteristic "lift")
+  # ============================================================================
+  - id: polska_001
+    file_path: test_data/audio/polska/example1.mp3
+    true_style: Polska
+    substyle: null  # e.g., "Bingsjö", "Rättvik", "Uppland"
+    difficulty: hard  # easy | medium | hard
+    expected_bpm: ~122
+    expected_meter: ternary
+    notes: "Very confusing rythm"
+    characteristics:
+      - might_detect_as_binary
+      - rubato_timing
+      - weak_downbeat
+
+  - id: polska_002
+    file_path: test_data/audio/polska/example2.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~133
+    expected_meter: ternary
+    notes: "Faster Polska, might be confused with Vals"
+    characteristics:
+      - moderate_asymmetry
+      - clear_lift
+
+  - id: polska_003
+    file_path: test_data/audio/polska/example3.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~125
+    expected_meter: ternary
+    notes: "CRITICAL: Might be confused with hambo or vals"
+    characteristics:
+      - subtle_asymmetry
+      - strict_tempo
+      - might_confuse_with_vals
+      - might_confuse_with_hambo
+
+
+  - id: polska_004
+    file_path: test_data/audio/polska/example4.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~117
+    expected_meter: ternary
+    notes: "Regional variant with specific beat pattern"
+    characteristics:
+      - regional_variant
+      - traditional_instrumentation
+
+  - id: polska_005
+    file_path: test_data/audio/polska/example5.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~98
+    expected_meter: ternary
+    notes: "Might be confused with Slängpolska"
+    characteristics:
+      - might_confuse_with_slangpolska
+
+  - id: polska_006
+    file_path: test_data/audio/polska/example6.mp3
+    true_style: Polska
+    substyle: Hamburska
+    difficulty: medium
+    expected_bpm: ~117
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - Hamburska
+
+  - id: polska_007
+    file_path: test_data/audio/polska/example7.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~115
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - none
+
+  - id: polska_008
+    file_path: test_data/audio/polska/example8.mp3
+    true_style: Polska
+    substyle: Pols
+    difficulty: medium
+    expected_bpm: ~127
+    expected_meter: ternary
+    notes: "Could be a pols"
+    characteristics:
+      - none
+
+  - id: polska_009
+    file_path: test_data/audio/polska/example9.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~142
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - none
+
+  - id: polska_010
+    file_path: test_data/audio/polska/example10.mp3
+    true_style: Polska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~124
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - none
+
+  # ============================================================================
+  # POLKA (2/4 or 4/4 binary, fast, even beats)
+  # ============================================================================
+  - id: polka_001
+    file_path: test_data/audio/polka/example1.mp3
+    true_style: Polka
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~116
+    expected_meter: binary
+    notes: "Clear fast Polka with even beats"
+    characteristics:
+      - fast_tempo
+      - even_beats
+      - high_energy
+
+  - id: polka_002
+    file_path: test_data/audio/polka/example2.mp3
+    true_style: Polka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~132
+    expected_meter: binary
+    notes: "Moderate tempo Polka"
+    characteristics:
+      - moderate_tempo
+      - clear_binary
+
+  - id: polka_003
+    file_path: test_data/audio/polka/example3.mp3
+    true_style: Polka
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~115
+    expected_meter: binary
+    notes: "CRITICAL: Slower Polka that might be confused with Snoa or Polska (if slight swing)"
+    characteristics:
+      - slow_for_polka
+      - might_confuse_with_snoa
+
+  - id: polka_004
+    file_path: test_data/audio/polka/example4.mp3
+    true_style: Polka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~117
+    expected_meter: binary
+    notes: "Medium fast Polka"
+    characteristics:
+      - high_onset_rate
+
+  # ============================================================================
+  # HAMBO (3/4 ternary, heavy downbeat, square phrasing)
+  # ============================================================================
+  - id: hambo_001
+    file_path: test_data/audio/hambo/example1.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~143
+    expected_meter: ternary
+    notes: "Classic Hambo with very strong downbeat"
+    characteristics:
+      - heavy_downbeat
+      - square_phrasing
+      - strict_timing
+
+  - id: hambo_002
+    file_path: test_data/audio/hambo/example2.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~142
+    expected_meter: ternary
+    notes: "Typical Hambo"
+    characteristics:
+      - clear_downbeat
+      - even_ratios
+
+  - id: hambo_003
+    file_path: test_data/audio/hambo/example3.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~117
+    expected_meter: ternary
+    notes: "CRITICAL: Hambo with some asymmetry, might be confused with Polska"
+    characteristics:
+      - moderate_downbeat
+      - slight_asymmetry
+      - might_confuse_with_polska
+
+  - id: hambo_004
+    file_path: test_data/audio/hambo/example4.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~143
+    expected_meter: ternary
+    notes: "Modern production Hambo"
+    characteristics:
+      - modern_production
+      - clear_structure
+
+  - id: hambo_005
+    file_path: test_data/audio/hambo/example5.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~126
+    expected_meter: ternary
+    notes: "Modern production Hambo"
+    characteristics:
+      - modern_production
+      - clear_structure
+
+  - id: hambo_006
+    file_path: test_data/audio/hambo/example6.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~149
+    expected_meter: ternary
+    notes: "Modern production Hambo"
+    characteristics:
+      - modern_production
+      - clear_structure
+
+  - id: hambo_007
+    file_path: test_data/audio/hambo/example7.mp3
+    true_style: Hambo
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~119
+    expected_meter: ternary
+    notes: "CRITICAL: Might be confused with polska"
+    characteristics:
+      - might_confuse_with_polska
+
+  # ============================================================================
+  # VALS (3/4 ternary, fast, very even beats)
+  # ============================================================================
+  - id: vals_001
+    file_path: test_data/audio/vals/example1.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~161
+    expected_meter: ternary
+    notes: "Classic fast Vals with perfectly even beats"
+    characteristics:
+      - very_fast
+      - perfectly_even_beats
+      - smooth_flow
+
+  - id: vals_002
+    file_path: test_data/audio/vals/example2.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~170
+    expected_meter: ternary
+    notes: "Moderate speed Vals"
+    characteristics:
+      - even_beats
+      - flowing_character
+
+  - id: vals_003
+    file_path: test_data/audio/vals/example3.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~152
+    expected_meter: ternary
+    notes: "CRITICAL: Fast Vals that might be confused with smooth Polska"
+    characteristics:
+      - slow_for_vals
+      - might_confuse_with_polska
+
+  - id: vals_004
+    file_path: test_data/audio/vals/example4.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~164
+    expected_meter: ternary
+    notes: "Very fast, clear Vals that might be confsued with mazurka"
+    characteristics:
+      - very_fast
+      - light_character
+
+  - id: vals_005
+    file_path: test_data/audio/vals/example5.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~134
+    expected_meter: ternary
+    notes: "Slow vals"
+    characteristics:
+      - slow_for_vals
+
+  - id: vals_006
+    file_path: test_data/audio/vals/example6.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~184
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - none
+
+  - id: vals_007
+    file_path: test_data/audio/vals/example7.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~134
+    expected_meter: ternary
+    notes: "None"
+    characteristics:
+      - none
+
+  - id: vals_008
+    file_path: test_data/audio/vals/example8.mp3
+    true_style: Vals
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~143
+    expected_meter: ternary
+    notes: "Might get confused with a polska"
+    characteristics:
+      - might_confuse_with_polska
+
+  # ============================================================================
+  # SCHOTTIS (2/4 or 4/4 binary, high swing)
+  # ============================================================================
+  - id: schottis_001
+    file_path: test_data/audio/schottis/example1.mp3
+    true_style: Schottis
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~160
+    expected_meter: binary
+    notes: "Classic Schottis with very high swing"
+    characteristics:
+      - high_swing
+      - bouncy_character
+      - square_phrasing
+
+  - id: schottis_002
+    file_path: test_data/audio/schottis/example2.mp3
+    true_style: Schottis
+    substyle: Reinlender
+    difficulty: medium
+    expected_bpm: ~168
+    expected_meter: binary
+    notes: "Typical Schottis, but might get confsued with snoa"
+    characteristics:
+      - moderate_swing
+      - clear_binary
+      - might_confuse_with_snoa
+
+  - id: schottis_003
+    file_path: test_data/audio/schottis/example3.mp3
+    true_style: Schottis
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~132
+    expected_meter: binary
+    notes: "CRITICAL: Schottis with lower swing, might be confused with Polka"
+    characteristics:
+      - lower_swing
+      - might_confuse_with_polka
+
+  - id: schottis_004
+    file_path: test_data/audio/schottis/example4.mp3
+    true_style: Schottis
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~146
+    expected_meter: binary
+    notes: "Slower Schottis"
+    characteristics:
+      - moderate_tempo
+      - clear_swing
+
+  - id: schottis_005
+    file_path: test_data/audio/schottis/example5.mp3
+    true_style: Schottis
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~160
+    expected_meter: binary
+    notes: "Slower Schottis"
+    characteristics:
+      - moderate_tempo
+      - clear_swing
+
+  # ============================================================================
+  # SNOA (2/4 or 4/4 binary, walking tempo)
+  # ============================================================================
+  - id: snoa_001
+    file_path: test_data/audio/snoa/example1.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~90
+    expected_meter: binary
+    notes: "Classic walking tempo Snoa"
+    characteristics:
+      - walking_tempo
+      - steady_rhythm
+      - lower_energy
+
+  - id: snoa_002
+    file_path: test_data/audio/snoa/example2.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~98
+    expected_meter: binary
+    notes: "CRITICAL: Snoa that might be confused with slow Polka"
+    characteristics:
+      - moderate_tempo
+
+  - id: snoa_003
+    file_path: test_data/audio/snoa/example3.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~101
+    expected_meter: binary
+    notes: "CRITICAL: Snoa that might be confused with slow Polka"
+    characteristics:
+      - fast_for_snoa
+      - might_confuse_with_polka
+
+  - id: snoa_004
+    file_path: test_data/audio/snoa/example4.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~94
+    expected_meter: binary
+    notes: "Slow, clear Snoa"
+    characteristics:
+      - slow_tempo
+      - relaxed_character
+
+  - id: snoa_005
+    file_path: test_data/audio/snoa/example5.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~103
+    expected_meter: binary
+    notes: "Slow, clear Snoa"
+    characteristics:
+      - slow_tempo
+      - relaxed_character
+
+  - id: snoa_006
+    file_path: test_data/audio/snoa/example6.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~116
+    expected_meter: binary
+    notes: "Slow, clear Snoa"
+    characteristics:
+      - slow_tempo
+      - relaxed_character
+
+  - id: snoa_007
+    file_path: test_data/audio/snoa/example7.mp3
+    true_style: Snoa
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~95
+    expected_meter: binary
+    notes: "Slow, clear Snoa"
+    characteristics:
+      - slow_tempo
+      - relaxed_character
+
+  # ============================================================================
+  # ENGELSKA (2/4 or 4/4 binary, similar to Polka)
+  # ============================================================================
+  - id: engelska_001
+    file_path: test_data/audio/engelska/example1.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~85
+    expected_meter: binary
+    notes: "Classic Engelska - rhythmically similar to Polka"
+    characteristics:
+      - polka_like_rhythm
+      - moderate_tempo
+
+  - id: engelska_002
+    file_path: test_data/audio/engelska/example2.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~92
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  - id: engelska_003
+    file_path: test_data/audio/engelska/example3.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~93
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  - id: engelska_004
+    file_path: test_data/audio/engelska/example4.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~87
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  - id: engelska_005
+    file_path: test_data/audio/engelska/example5.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~112
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  - id: engelska_006
+    file_path: test_data/audio/engelska/example6.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~82
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  - id: engelska_007
+    file_path: test_data/audio/engelska/example7.mp3
+    true_style: Engelska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~104
+    expected_meter: binary
+    notes: "Typical Engelska"
+    characteristics:
+      - even_beats
+      - clear_binary
+
+  # ============================================================================
+  # SLÄNGPOLSKA (3/4 ternary, smooth variant of Polska)
+  # ============================================================================
+  - id: slangpolska_001
+    file_path: test_data/audio/slangpolska/example1.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~116
+    expected_meter: ternary
+    notes: "Very smooth Polska with low punchiness"
+    characteristics:
+      - very_smooth
+      - low_punchiness
+      - flowing_character
+      - confusable_with_polska
+
+  - id: slangpolska_002
+    file_path: test_data/audio/slangpolska/example2.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~107
+    expected_meter: ternary
+    notes: "CRITICAL: Might be confused with Polska due to long first character"
+    characteristics:
+      - smooth_flow
+      - might_confuse_with_polska
+
+  - id: slangpolska_003
+    file_path: test_data/audio/slangpolska/example3.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~114
+    expected_meter: ternary
+    notes: "none"
+    characteristics:
+      - none
+
+  - id: slangpolska_004
+    file_path: test_data/audio/slangpolska/example4.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~102
+    expected_meter: ternary
+    notes: "none"
+    characteristics:
+      - none
+
+
+  - id: slangpolska_005
+    file_path: test_data/audio/slangpolska/example5.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~96
+    expected_meter: ternary
+    notes: "CRITICAL: Might be confused with Vals due to smooth character"
+    characteristics:
+      - smooth_flow
+      - might_confuse_with_vals
+
+  - id: slangpolska_006
+    file_path: test_data/audio/slangpolska/example6.mp3
+    true_style: Slängpolska
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~116
+    expected_meter: ternary
+    notes: "CRITICAL: Might be confused with Vals due to smooth character"
+    characteristics:
+      - smooth_flow
+      - might_confuse_with_vals
+
+  # ============================================================================
+  # MAZURKA (3/4 ternary, Polish dance, distinct accent pattern)
+  # ============================================================================
+  - id: mazurka_001
+    file_path: test_data/audio/mazurka/example1.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~136
+    expected_meter: ternary
+    notes: "CRITICAL: Slower Mazurka that might be confused with Polska or Vals"
+    characteristics:
+      - subtle_accent
+      - might_confuse_with_polska
+      - might_confuse_with_vals
+
+  - id: mazurka_002
+    file_path: test_data/audio/mazurka/example2.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~154
+    expected_meter: ternary
+    notes: "Faster Mazurka"
+    characteristics:
+      - clear_accent_pattern
+      - faster_tempo
+      - might_confuse_with_vals
+
+  - id: mazurka_003
+    file_path: test_data/audio/mazurka/example3.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~172
+    expected_meter: ternary
+    notes: "CRITICAL: Fast mazurka that might be confused with vals"
+    characteristics:
+      - subtle_accent
+      - might_confuse_with_vals
+      - higher_tempo
+
+  - id: mazurka_004
+    file_path: test_data/audio/mazurka/example4.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~151
+    expected_meter: ternary
+    notes: "Typical Mazurka with clear structure"
+    characteristics:
+      - clear_structure
+      - moderate_tempo
+
+  - id: mazurka_005
+    file_path: test_data/audio/mazurka/example5.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~174
+    expected_meter: ternary
+    notes: "Typical Mazurka with clear structure"
+    characteristics:
+      - clear_structure
+      - fast_tempo
+
+  - id: mazurka_006
+    file_path: test_data/audio/mazurka/example6.mp3
+    true_style: Mazurka
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~174
+    expected_meter: ternary
+    notes: "Typical Mazurka with clear structure"
+    characteristics:
+      - clear_structure
+      - fast_tempo
+
+  # ============================================================================
+  # MENUETT (3/4 ternary, elegant, moderate tempo)
+  # ============================================================================
+  - id: menuett_001
+    file_path: test_data/audio/menuett/example1.mp3
+    true_style: Menuett
+    substyle: null
+    difficulty: easy
+    expected_bpm: ~77
+    expected_meter: ternary
+    notes: "Classic Menuett with elegant, flowing character"
+    characteristics:
+      - elegant_character
+      - even_beats
+      - slow_tempo
+
+  - id: menuett_002
+    file_path: test_data/audio/menuett/example2.mp3
+    true_style: Menuett
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~86
+    expected_meter: ternary
+    notes: "Slower Menuett"
+    characteristics:
+      - graceful_flow
+      - slower_tempo
+
+  - id: menuett_003
+    file_path: test_data/audio/menuett/example3.mp3
+    true_style: Menuett
+    substyle: null
+    difficulty: medium
+    expected_bpm: ~78
+    expected_meter: ternary
+    notes: "none"
+    characteristics:
+      - slow_tempo
+
+  - id: menuett_004
+    file_path: test_data/audio/menuett/example4.mp3
+    true_style: Menuett
+    substyle: null
+    difficulty: hard
+    expected_bpm: ~140
+    expected_meter: ternary
+    notes: "Not a typical menuett at all times"
+    characteristics:
+      - clear_phrasing
+      - elegant_style
+      - might_confuse_with_vals
+
+# ============================================================================
+# CRITICAL CONFUSION PAIRS
+# Document known problematic classification boundaries
+# ============================================================================
+critical_confusions:
+  - pair: [Polska, Polka]
+    issue: "Polska misdetected as binary meter becomes Polka"
+    test_cases: [polska_003, polka_003]
+
+  - pair: [Hambo, Polska]
+    issue: "Both ternary, different beat patterns"
+    test_cases: [hambo_003, polska_002]
+
+  - pair: [Vals, Polska]
+    issue: "Smooth Polska vs slow Vals"
+    test_cases: [vals_003, polska_002]
+
+  - pair: [Schottis, Polka]
+    issue: "Swing difference"
+    test_cases: [schottis_003, polka_002]
+
+  - pair: [Snoa, Polka]
+    issue: "Tempo-based distinction"
+    test_cases: [snoa_003, polka_003]
+
+  - pair: [Slängpolska, Vals]
+    issue: "Both smooth ternary"
+    test_cases: [slangpolska_002, vals_003]
+
+  - pair: [Mazurka, Polska]
+    issue: "Both ternary with accent patterns, different regional origins"
+    test_cases: [mazurka_003, polska_002]
+
+  - pair: [Menuett, Vals]
+    issue: "Both ternary, elegant character, tempo difference"
+    test_cases: [menuett_003, vals_003]
+
+  - pair: [Mazurka, Vals]
+    issue: "Both ternary, different accent patterns"
+    test_cases: [mazurka_003, vals_002]
+
+# ============================================================================
+# METADATA
+# ============================================================================
+metadata:
+  version: "1.0"
+  created: "2025-12-19"
+  total_tracks: 0  # Update this as you add tracks
+  styles_covered: 10
+  priority_styles:
+    - Polska
+    - Polka
+    - Hambo
+    - Vals
+    - Mazurka
+    - Menuett
+  notes: |
+    This test set is designed to evaluate classification accuracy and
+    identify critical misclassifications. Focus on adding tracks that
+    represent the most challenging classification boundaries.
+
+    Note: Mazurka and Menuett are both 3/4 ternary dances that may
+    require specific threshold tuning to distinguish from Polska/Vals.

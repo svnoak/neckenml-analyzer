@@ -1,0 +1,159 @@
+# Known Classification Issues and Improvement Tracking
+#
+# Use this file to document:
+# - Current classification failures
+# - Root causes identified
+# - Threshold changes made
+# - Before/after metrics
+
+# ============================================================================
+# ACTIVE ISSUES
+# ============================================================================
+active_issues:
+  - issue_id: ISSUE_001
+    date_identified: "2025-12-19"
+    severity: critical  # critical | high | medium | low
+    description: "Polska misdetected as binary meter → classified as Polka"
+    affected_styles: [Polska]
+    misclassified_as: [Polka]
+    frequency: "~20-30% of Polska tracks"
+    root_cause: |
+      Beat detection sometimes fails to recognize ternary meter in Polska,
+      especially when timing is strict or tempo is in the 95-115 BPM range.
+      The rescue logic exists but may need threshold tuning.
+    affected_thresholds:
+      - ternary_confidence_threshold
+      - polska_score_min_threshold
+      - rescue_signals_needed
+    test_cases: [polska_003]
+    status: open  # open | investigating | fixed | wontfix
+    priority: 1
+
+  - issue_id: ISSUE_002
+    date_identified: "2025-12-19"
+    severity: high
+    description: "Hambo confused with Polska when asymmetry is moderate"
+    affected_styles: [Hambo]
+    misclassified_as: [Polska]
+    frequency: "~10-15% of Hambo tracks"
+    root_cause: |
+      When Hambo has slight beat asymmetry but still maintains strong
+      downbeat, the polska_score might exceed hambo_score threshold.
+    affected_thresholds:
+      - hambo_score_threshold
+      - polska_hambo_separation_threshold
+      - downbeat_dominance_threshold
+    test_cases: [hambo_003]
+    status: open
+    priority: 2
+
+  - issue_id: ISSUE_003
+    date_identified: "2025-12-19"
+    severity: medium
+    description: "Smooth Polska confused with Vals"
+    affected_styles: [Polska, Slängpolska]
+    misclassified_as: [Vals]
+    frequency: "~5-10% of smooth Polska"
+    root_cause: |
+      When Polska has very low punchiness and faster tempo (120+ BPM),
+      it can be classified as Vals instead.
+    affected_thresholds:
+      - vals_even_beat_tolerance
+      - slangpolska_punchiness_threshold
+    test_cases: [polska_002, slangpolska_002, vals_003]
+    status: open
+    priority: 3
+
+# ============================================================================
+# THRESHOLD CHANGE LOG
+# ============================================================================
+threshold_changes:
+  # Example entry - document every change you make
+  # - date: "2025-12-19"
+  #   threshold: polska_score_min_threshold
+  #   old_value: 0.45
+  #   new_value: 0.42
+  #   reason: "Reduce false negatives for subtle Polska tracks"
+  #   affected_test_cases: [polska_003]
+  #   metrics_before:
+  #     polska_accuracy: 0.75
+  #     polska_recall: 0.70
+  #   metrics_after:
+  #     polska_accuracy: 0.80
+  #     polska_recall: 0.78
+  #   regression_check:
+  #     polka_accuracy_before: 0.85
+  #     polka_accuracy_after: 0.83
+  #     notes: "Slight decrease in Polka accuracy, acceptable tradeoff"
+  #   status: testing  # testing | deployed | reverted
+
+# ============================================================================
+# RESOLVED ISSUES
+# ============================================================================
+resolved_issues:
+  # Document issues that have been fixed
+  # - issue_id: ISSUE_XXX
+  #   date_resolved: "2025-XX-XX"
+  #   resolution: "Description of fix"
+  #   verification: "Test results confirming fix"
+
+# ============================================================================
+# EDGE CASES & OBSERVATIONS
+# ============================================================================
+observations:
+  - observation: "Polska rescue logic activates correctly but signals threshold may be too high"
+    date: "2025-12-19"
+    details: |
+      In analyzing the rescue logic, requiring 3+ signals might be too conservative.
+      Consider testing with 2+ signals for tracks with high ternary_confidence (>0.60).
+
+  - observation: "BPM multiplier logic sometimes doubles/halves incorrectly"
+    date: "2025-12-19"
+    details: |
+      Need to verify BPM multiplier rules for edge cases, especially Hambo >160 BPM
+      and Vals >100 BPM (multiplied by 0.333).
+
+  - observation: "Modern electronic production affects folk authenticity score"
+    date: "2025-12-19"
+    details: |
+      Electronic Polska tracks are being flagged for manual review due to low
+      folk authenticity, even when classification is correct.
+
+# ============================================================================
+# METRICS BASELINE
+# Document initial performance before optimization
+# ============================================================================
+baseline_metrics:
+  date: null  # Fill in after first evaluation run
+  overall_accuracy: null
+  per_style_accuracy:
+    Polska: null
+    Polka: null
+    Hambo: null
+    Vals: null
+    Schottis: null
+    Snoa: null
+    Engelska: null
+    Slängpolska: null
+  confusion_matrix: null
+  notes: "Run evaluate_classification.py to populate baseline"
+
+# ============================================================================
+# IMPROVEMENT TARGETS
+# ============================================================================
+targets:
+  overall_accuracy: ">90%"
+  critical_styles:
+    Polska: ">85%"
+    Polka: ">90%"
+    Hambo: ">85%"
+  acceptable_confusions:
+    - pair: [Engelska, Polka]
+      reason: "Rhythmically identical, often distinguished by metadata"
+    - pair: [Snoa, Polka]
+      reason: "Tempo boundary is inherently fuzzy"
+  unacceptable_confusions:
+    - pair: [Polska, Polka]
+      reason: "Different meter, completely different dance"
+    - pair: [Hambo, Polka]
+      reason: "Different meter, would confuse dancers"

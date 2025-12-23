@@ -1,0 +1,45 @@
+services:
+  neckenml-analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: neckenml-analyzer
+    volumes:
+      # Mount current directory for live code updates
+      - .:/app
+      # Mount models directory (create it on host first)
+      - ~/.neckenml/models:/root/.neckenml/models
+      # Mount test data
+      - ./test_data:/app/test_data
+    working_dir: /app
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - neckenml-network
+
+  # Optional: PostgreSQL with pgvector if needed
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: neckenml-postgres
+    environment:
+      - POSTGRES_DB=neckenml
+      - POSTGRES_USER=neckenml
+      - POSTGRES_PASSWORD=neckenml
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - neckenml-network
+
+networks:
+  neckenml-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

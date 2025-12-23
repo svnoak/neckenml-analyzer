@@ -18,7 +18,8 @@ class StyleClassifier:
         self,
         db: Any = None,
         categorize_tempo_fn: Optional[Callable] = None,
-        get_keywords_fn: Optional[Callable] = None
+        get_keywords_fn: Optional[Callable] = None,
+        params: Optional['ClassifierParams'] = None
     ):
         """
         Initialize StyleClassifier.
@@ -27,13 +28,19 @@ class StyleClassifier:
             db: Database session (optional, for keyword lookups)
             categorize_tempo_fn: Function to categorize tempo (style, effective_bpm) -> tempo_category
             get_keywords_fn: Function to get keywords from database (db) -> list of (keyword, main_style, sub_style)
+            params: Optional ClassifierParams for custom thresholds (uses optimized defaults if not provided)
         """
         from neckenml.classifier.style_head import ClassificationHead
+        from neckenml.classifier.params import ClassifierParams
+
         self.head = ClassificationHead()
 
         self._db = db
         self._categorize_tempo = categorize_tempo_fn
         self._get_keywords = get_keywords_fn
+
+        # Use provided params or defaults
+        self.params = params if params is not None else ClassifierParams()
 
     def classify(self, track: Any, analysis: dict) -> list:
         """
@@ -170,7 +177,8 @@ class StyleClassifier:
                 return heuristic_result("Polska", conf, reason)
             
             # Strong Hambo signature
-            if hambo_score > 0.45 and score_diff < -0.10:
+            # Threshold is parameterized for optimization
+            if hambo_score > self.params.hambo_score_threshold and score_diff < -0.10:
                 bonus = 0.10 if is_square(avg_bars) else 0.0
                 conf = min(0.50, 0.35 + hambo_score * 0.20)
                 reason = f"Hambo signature ({hambo_score:.2f}): Heavy downbeat"
@@ -180,22 +188,39 @@ class StyleClassifier:
             
             # Fallback to ratio-based logic when signatures are inconclusive
             # Hambo Logic: Long 1st beat + Square Structure
-            if ratios[0] > 0.40:
+            if ratios[0] > self.params.hambo_ratio_threshold:
                 bonus = 0.10 if is_square(avg_bars) else 0.0
                 reason = "Long 1st Beat" + (f" + Square ({int(avg_bars)} bars)" if is_square(avg_bars) else "")
                 return heuristic_result("Hambo", 0.40, reason, bonus)
             
             # Vals Logic: Even beats
-            if abs(ratios[0] - 0.33) < 0.05 and abs(ratios[1] - 0.33) < 0.05:
-                return heuristic_result("Vals", 0.35, "Even Beat lengths")
+            # Tolerance is parameterized for optimization
+            if abs(ratios[0] - 0.33) < self.params.vals_ratio_tolerance and abs(ratios[1] - 0.33) < self.params.vals_ratio_tolerance:
+                # Additional check: Low polska_score indicates Vals not Polska
+                if polska_score < self.params.vals_polska_score_max:  # Clear Vals indicator
+                    return heuristic_result("Vals", 0.42, "Even Beat lengths")
+                else:
+                    return heuristic_result("Vals", 0.35, "Even Beat lengths (weak)")
 
             # Slängpolska Logic: Smooth
-            if punchiness < 0.1: 
+            if punchiness < 0.1:
                 return heuristic_result("Slängpolska", 0.35, "Smooth/Flowing Texture")
 
-            # If we have ANY Polska signal, prefer it over Unknown
-            if polska_score > 0.25:
-                return heuristic_result("Polska", 0.30, f"Weak Polska signal ({polska_score:.2f})")
+            # Mazurka Logic: Ternary with accent on beat 2 or 3, often high swing
+            # Swing thresholds are parameterized for optimization
+            if swing > self.params.mazurka_swing_high or (swing > self.params.mazurka_swing_medium and ratios[1] > ratios[0]):
+                return heuristic_result("Mazurka", 0.38,
+                    f"Mazurka rhythm: swing={swing:.2f}, beat emphasis pattern")
+
+            # Menuett Logic (ternary variant): Even beats, graceful
+            # Swing range is parameterized for optimization
+            if abs(ratios[0] - 0.33) < 0.07 and self.params.menuett_swing_min <= swing <= self.params.menuett_swing_max:
+                return heuristic_result("Menuett", 0.40, "Even graceful 3/4")
+
+            # If we have a MODERATE Polska signal, prefer it over Unknown
+            # Threshold is parameterized for optimization
+            if polska_score > self.params.polska_score_fallback:
+                return heuristic_result("Polska", 0.32, f"Moderate Polska signal ({polska_score:.2f})")
 
             # Polska Logic: Generic/Asymmetric (Often NOT square)
             return {
@@ -222,26 +247,73 @@ class StyleClassifier:
                 reason = f"Rescued from binary: ternary_conf={ternary_confidence:.2f}, polska_score={polska_score:.2f}"
                 print(f"POLSKA RESCUE triggered!")
                 return heuristic_result("Polska", 0.40, reason)
-            
+
+            # ============================================================
+            # HAMBO RESCUE: Check for binary-detected Hambo
+            # Similar to Polska rescue - Hambo can be misdetected as binary
+            # ============================================================
+            # ADDED: Binary Hambo rescue (actual hambo_score range: 0.2-0.4)
+            if hambo_score > 0.35 or (hambo_score > 0.25 and swing > 1.20):
+                return heuristic_result("Hambo", 0.40,
+                    f"Binary-detected Hambo: score={hambo_score:.2f}, swing={swing:.2f}")
+
+            # Menuett Logic: Elegant, flowing, moderate swing
+            # Swing and BPM ranges are parameterized for optimization
+            if self.params.menuett_swing_min <= swing <= self.params.menuett_swing_max:
+                if not bpm or bpm < self.params.menuett_bpm_max:  # No BPM or stately tempo
+                    bpm_str = f"{int(bpm)} BPM" if bpm else "unknown tempo"
+                    return heuristic_result("Menuett", 0.35,
+                        f"Elegant moderate swing ({swing:.2f}), stately tempo ({bpm_str})")
+
             # Schottis Logic: High Swing + Square Structure
-            if swing > 1.25:
+            # Threshold is parameterized for optimization
+            if swing > self.params.schottis_swing_threshold:
                 bonus = 0.10 if is_square(avg_bars) else 0.0
                 reason = f"High Swing ({swing:.2f})" + (" + Square" if is_square(avg_bars) else "")
                 return heuristic_result("Schottis", 0.40, reason, bonus)
             
-            # Snoa Logic: Strict Tempo Range
-            if 80 < bpm < 115:
-                return heuristic_result("Snoa", 0.35, f"Walking Tempo ({int(bpm)} BPM)")
+            # Snoa Logic: Strict Tempo Range OR moderate swing without high tempo
+            # BPM and swing ranges are parameterized for optimization
+            if bpm and self.params.snoa_bpm_min < bpm < self.params.snoa_bpm_max:
+                # Snoa has moderate swing, not high like Schottis
+                if swing < self.params.snoa_swing_max:
+                    return heuristic_result("Snoa", 0.40,
+                        f"Walking tempo ({int(bpm)} BPM, swing={swing:.2f})")
+                else:
+                    # High swing at walking tempo - probably Schottis
+                    return heuristic_result("Schottis", 0.35,
+                        f"High swing walking tempo ({int(bpm)} BPM, swing={swing:.2f})")
+            # Fallback Snoa detection based on swing alone (when BPM missing)
+            elif not bpm and self.params.snoa_swing_fallback_min <= swing <= self.params.snoa_swing_fallback_max:
+                return heuristic_result("Snoa", 0.30,
+                    f"Moderate swing ({swing:.2f}), walking-pace character")
             
-            # Polka Logic: Fast Tempo
-            # Additional check: Make sure it's not a polska in disguise
-            elif bpm >= 115:
+            # Engelska & Polka Logic: Binary, moderate to low swing
+            # When BPM is available, use it for better distinction
+            if bpm and bpm >= self.params.engelska_bpm_min:
+                # Engelska detection - swing ranges are parameterized
+                if self.params.engelska_swing_min <= swing <= self.params.engelska_swing_max:
+                    return heuristic_result("Engelska", 0.35,
+                        f"Binary moderate swing ({swing:.2f}), fast tempo ({int(bpm)} BPM)")
+                # Polka Logic: Fast Tempo, even beats
+                # Swing threshold is parameterized for optimization
+                elif swing < self.params.polka_swing_max:  # Clear Polka range
+                    return heuristic_result("Polka", 0.40,
+                        f"Fast even tempo ({int(bpm)} BPM, swing={swing:.2f})")
                 # Only override to Polska if BOTH indicators are very strong
-                # This prevents real Polka from being misclassified
-                if ternary_confidence > 0.65 and polska_score > 0.45:
-                    return heuristic_result("Polska", 0.35, 
+                elif ternary_confidence > 0.65 and polska_score > 0.45:
+                    return heuristic_result("Polska", 0.35,
                         f"Fast 3/4 (ternary={ternary_confidence:.2f}, polska={polska_score:.2f})")
-                return heuristic_result("Polka", 0.30, f"Fast Tempo ({int(bpm)} BPM)")
+                else:
+                    # Borderline swing - still likely Polka
+                    return heuristic_result("Polka", 0.30,
+                        f"Fast tempo ({int(bpm)} BPM)")
+
+            # Fallback when BPM is missing: use swing alone
+            # Engelska/Polka have similar swing profiles - use Engelska range
+            elif not bpm and self.params.engelska_swing_min <= swing <= 0.95:
+                return heuristic_result("Engelska", 0.30,
+                    f"Binary moderate swing ({swing:.2f})")
             
             return {
                 "style": "Unknown", 
@@ -265,7 +337,8 @@ class StyleClassifier:
         
         # REQUIRED: Must have meaningful ternary confidence
         # This is the primary indicator that meter detection was wrong
-        if ternary_conf < 0.45:
+        # Threshold is parameterized for optimization
+        if ternary_conf < self.params.polska_rescue_ternary_min:
             return False  # Not enough evidence of ternary meter
         
         if ternary_conf > 0.65:
@@ -277,8 +350,9 @@ class StyleClassifier:
         
         # Polska score requirement depends on ternary confidence
         # Higher ternary confidence = we can accept lower polska score
-        min_polska_score = 0.25 if ternary_conf >= 0.55 else 0.15
-        
+        # Threshold is parameterized for optimization
+        min_polska_score = 0.35 if ternary_conf >= 0.60 else self.params.polska_rescue_polska_score_min
+
         if polska_score < min_polska_score:
             return False  # No polska rhythmic characteristics
             
@@ -314,8 +388,8 @@ class StyleClassifier:
         if swing > 1.20:
             signals -= 1  # Penalty for high swing
         
-        # Need at least 3 signals - be balanced between rescue and false positives
-        return signals >= 3
+        # Number of signals required is parameterized for optimization
+        return signals >= self.params.polska_rescue_signals_required
 
     def _get_secondary_styles(self, primary, raw_bpm, analysis):
         """

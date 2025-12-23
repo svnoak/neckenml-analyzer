@@ -236,6 +236,7 @@ trainer.train_from_data(embeddings, labels)
 - [Installation Guide](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/installation.md) - Detailed setup instructions
 - [Quick Start](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/quickstart.md) - Getting started examples
 - [Extending](https://github.com/svnoak/neckenml-analyzer/blob/main/docs/extending.md) - Custom AudioSource implementations and model training
+- [Scripts](https://github.com/svnoak/neckenml-analyzer/blob/main/scripts/README.md) - CLI tools for evaluation and optimization
 
 ## Architecture
 
