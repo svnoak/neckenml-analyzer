@@ -8,7 +8,7 @@ from neckenml.classifier.style_head import ClassificationHead
 from neckenml.analyzer.folk_authenticity import FolkAuthenticityDetector
 from neckenml.analyzer.reanalysis import compute_derived_features
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "AudioAnalyzer",
