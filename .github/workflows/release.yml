@@ -41,13 +41,13 @@ jobs:
           echo "Package verification passed"
 
       - name: Publish to PyPI
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release Assets
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         run: |
           cp dist/*.whl dist/*.tar.gz . || true
           echo "Release assets prepared"
