@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write  # Required for trusted publishing to PyPI
 
     steps:
       - name: Checkout code
@@ -43,8 +44,7 @@ jobs:
       - name: Publish to PyPI
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+        # Uses OpenID Connect (trusted publishing) - no password needed!
 
       - name: Create GitHub Release Assets
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
