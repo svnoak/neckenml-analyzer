@@ -72,12 +72,12 @@ class AudioAnalyzer:
                 output="model/dense/BiasAdd"
             )
 
-            # Load vocal model (classification head uses TensorflowPredict2D for embeddings)
+            # Load vocal model (uses TensorflowPredictMusiCNN for raw audio input)
             vocal_model_path = os.path.join(self.model_dir, "voice_instrumental-musicnn-msd-1.pb")
             if os.path.exists(vocal_model_path):
-                self.vocal_model = es.TensorflowPredict2D(
+                self.vocal_model = es.TensorflowPredictMusiCNN(
                     graphFilename=vocal_model_path,
-                    output="model/Softmax"
+                    output="model/Sigmoid"  # Using Sigmoid activation for binary classification
                 )
             else:
                 print(f"    Vocal model file missing: {vocal_model_path}")
@@ -180,12 +180,13 @@ class AudioAnalyzer:
 
             # --- 2. VOCALS ---
             print(f"   [ANALYSIS] Doing voice detection...")
-            # Pass raw embeddings matrix to vocal model (classification head processes time-series)
+            # Vocal model expects raw audio, not embeddings
             vocal_data = analyze_vocal_presence(
-                raw_embeddings,
+                audio_for_nn,
+                sample_rate=16000,
                 model_dir=self.model_dir,
                 vocal_model=self.vocal_model,
-                input_is_embeddings=True
+                input_is_embeddings=False  # Changed to False - model expects audio
             )
 
             # --- 3. RHYTHM ---

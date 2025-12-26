@@ -56,17 +56,16 @@ def analyze_vocal_presence(audio_array, sample_rate=16000, model_dir=None, vocal
             if vocal_model is None:
                 vocal_model = es.TensorflowPredict2D(
                     graphFilename=model_path,
-                    output="model/Softmax"
+                    output="model/Sigmoid"
                 )
 
             # audio_array is actually MusiCNN embeddings matrix
             predictions = vocal_model(audio_array)
         else:
-            # For raw audio input, use TensorflowPredictMusiCNN
             if vocal_model is None:
                 vocal_model = es.TensorflowPredictMusiCNN(
                     graphFilename=model_path,
-                    output="model/Softmax"
+                    output="model/Sigmoid"
                 )
 
             # The model expects normalized inputs usually, but since we are handling

@@ -14,6 +14,7 @@ neckenml/analyzer/extractors/structure.py
 neckenml/analyzer/extractors/swing.py
 neckenml/analyzer/extractors/vocal.py
 neckenml/classifier/__init__.py
+neckenml/classifier/params.py
 neckenml/classifier/style_classifier.py
 neckenml/classifier/style_head.py
 neckenml/models/__init__.py
@@ -30,3 +31,4 @@ neckenml_analyzer.egg-info/dependency_links.txt
 neckenml_analyzer.egg-info/requires.txt
 neckenml_analyzer.egg-info/top_level.txt
 tests/test_artifact_persistence.py
+tests/test_parameterization.py
