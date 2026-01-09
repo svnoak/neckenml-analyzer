@@ -1,5 +1,6 @@
 import traceback
 import os
+import gc
 from typing import Optional
 
 from .extractors.vocal import analyze_vocal_presence
@@ -8,6 +9,10 @@ from .extractors.feel import analyze_feel
 from .extractors.section_labeler import ABSectionLabeler
 from neckenml.sources.base import AudioSource
 
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
 
 class AudioAnalyzer:
     def __init__(self, audio_source: Optional[AudioSource] = None, model_dir: Optional[str] = None):
@@ -44,6 +49,54 @@ class AudioAnalyzer:
         self.tf_embeddings = None
         self.vocal_model = None
         self._load_ai_models()
+
+    def __enter__(self):
+        """Enables use in a 'with' statement."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Automatically called when exiting the 'with' block."""
+        self.close()
+
+    def close(self):
+        """
+        Manually frees memory and destroys the internal TensorFlow graph.
+        Call this when you are done with the analyzer to prevent memory leaks.
+        """
+        print("   [CLEANUP] NeckenML: Releasing analyzer resources...")
+
+        if self.tf_embeddings:
+            del self.tf_embeddings
+            self.tf_embeddings = None
+
+        if self.vocal_model:
+            del self.vocal_model
+            self.vocal_model = None
+
+        # 2. Force TensorFlow Backend Cleanup
+        # Essentia uses TF C++ bindings, so we must reset the global state.
+        if tf:
+            try:
+                # Clear Keras Session (TF 2.x)
+                if hasattr(tf.keras.backend, 'clear_session'):
+                    tf.keras.backend.clear_session()
+
+                # Reset Default Graph (TF 1.x / Compat)
+                # This is crucial for Essentia's TensorflowPredict
+                if hasattr(tf.compat.v1, 'reset_default_graph'):
+                    tf.compat.v1.reset_default_graph()
+
+                # Close explicit session if one exists
+                if hasattr(tf.compat.v1, 'get_default_session'):
+                    sess = tf.compat.v1.get_default_session()
+                    if sess:
+                        sess.close()
+            except Exception as e:
+                print(f"   [CLEANUP] Warning during TF cleanup: {e}")
+
+        # 3. Force Python Garbage Collection
+        gc.collect()
+        print("   [CLEANUP] NeckenML: Resources freed.")
 
     def _get_model_dir(self, model_dir: Optional[str]) -> str:
         """Get the model directory, using default if not provided."""
