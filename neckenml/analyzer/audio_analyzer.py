@@ -9,11 +9,6 @@ from .extractors.feel import analyze_feel
 from .extractors.section_labeler import ABSectionLabeler
 from neckenml.sources.base import AudioSource
 
-try:
-    import tensorflow as tf
-except ImportError:
-    tf = None
-
 class AudioAnalyzer:
     def __init__(self, audio_source: Optional[AudioSource] = None, model_dir: Optional[str] = None):
         """
@@ -65,6 +60,7 @@ class AudioAnalyzer:
         """
         print("   [CLEANUP] NeckenML: Releasing analyzer resources...")
 
+        # 1. Delete TensorFlow model references
         if self.tf_embeddings:
             del self.tf_embeddings
             self.tf_embeddings = None
@@ -73,28 +69,31 @@ class AudioAnalyzer:
             del self.vocal_model
             self.vocal_model = None
 
-        # 2. Force TensorFlow Backend Cleanup
-        # Essentia uses TF C++ bindings, so we must reset the global state.
-        if tf:
-            try:
-                # Clear Keras Session (TF 2.x)
-                if hasattr(tf.keras.backend, 'clear_session'):
-                    tf.keras.backend.clear_session()
+        # 2. Delete Essentia algorithm instances
+        if hasattr(self, 'loudness_algo'):
+            del self.loudness_algo
+        if hasattr(self, 'rms_algo'):
+            del self.rms_algo
+        if hasattr(self, 'zcr_algo'):
+            del self.zcr_algo
+        if hasattr(self, 'onset_rate_algo'):
+            del self.onset_rate_algo
+        if hasattr(self, 'envelope_algo'):
+            del self.envelope_algo
 
-                # Reset Default Graph (TF 1.x / Compat)
-                # This is crucial for Essentia's TensorflowPredict
-                if hasattr(tf.compat.v1, 'reset_default_graph'):
-                    tf.compat.v1.reset_default_graph()
+        # 3. Delete heavy extractor objects
+        if hasattr(self, 'rhythm_extractor'):
+            del self.rhythm_extractor
+        if hasattr(self, 'structure_extractor'):
+            del self.structure_extractor
+        if hasattr(self, 'head'):
+            del self.head
+        if hasattr(self, 'folk_detector'):
+            del self.folk_detector
 
-                # Close explicit session if one exists
-                if hasattr(tf.compat.v1, 'get_default_session'):
-                    sess = tf.compat.v1.get_default_session()
-                    if sess:
-                        sess.close()
-            except Exception as e:
-                print(f"   [CLEANUP] Warning during TF cleanup: {e}")
-
-        # 3. Force Python Garbage Collection
+        # 5. Force aggressive garbage collection (multiple passes for circular refs)
+        gc.collect()
+        gc.collect()
         gc.collect()
         print("   [CLEANUP] NeckenML: Resources freed.")
 
@@ -103,7 +102,6 @@ class AudioAnalyzer:
         if model_dir:
             return os.path.expanduser(model_dir)
 
-        # Default to ~/.neckenml/models
         default_dir = os.path.expanduser("~/.neckenml/models")
         if not os.path.exists(default_dir):
             print(f"Default model directory doesn't exist: {default_dir}")
@@ -421,7 +419,20 @@ class AudioAnalyzer:
                     "features": self._sanitize_for_json(raw_result),
                     "raw_artifacts": self._sanitize_for_json(artifacts)
                 }
+
+                # Clean up large numpy arrays immediately
+                del audio_16k, audio_for_nn, raw_embeddings, avg_embedding
+                if 'stereo_audio' in locals():
+                    del stereo_audio
+                gc.collect()
+
                 return result_with_artifacts
+
+            # Clean up large numpy arrays immediately
+            del audio_16k, audio_for_nn, raw_embeddings, avg_embedding
+            if 'stereo_audio' in locals():
+                del stereo_audio
+            gc.collect()
 
             return self._sanitize_for_json(raw_result)
 
