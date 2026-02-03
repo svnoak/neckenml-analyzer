@@ -2,7 +2,7 @@
 
 Audio analysis for Swedish folk music using Essentia, Madmom, and Librosa.
 
-**AGPL-3.0 licensed** - using this package requires your application to be AGPL-licensed if distributed.
+**AGPL-3.0 licensed**
 
 ## Installation
 

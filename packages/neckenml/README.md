@@ -4,7 +4,7 @@ Swedish folk music audio analysis and dance style classification.
 
 This is the full package that includes both core classification and audio analysis.
 
-**AGPL-3.0 licensed** - using this package requires your application to be AGPL-licensed if distributed.
+**AGPL-3.0 licensed**
 
 ## Installation
 

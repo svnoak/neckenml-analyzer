@@ -1,6 +1,6 @@
 # neckenml-core
 
-Core components for Swedish folk music classification. **MIT licensed** - safe for use in proprietary applications.
+Core components for Swedish folk music classification. **MIT licensed**
 
 ## Installation
 

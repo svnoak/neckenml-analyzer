@@ -92,8 +92,8 @@ pytest
 
 ## License
 
-- **neckenml-core**: MIT - Safe for proprietary use
-- **neckenml-analyzer** / **neckenml**: AGPL-3.0 - Due to Essentia
+- **neckenml-core**: MIT
+- **neckenml-analyzer** / **neckenml**: AGPL-3.0
 
 ## Links
 
