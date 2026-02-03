@@ -103,7 +103,7 @@ class StyleClassifier:
             if ml_style != "Unknown":
                 return {
                     "style": ml_style,
-                    "confidence": ml_confidence,  # Real probability from model
+                    "confidence": ml_confidence,
                     "reason": "AI Groove Fingerprint",
                     "source": "ml"
                 }
@@ -177,7 +177,6 @@ class StyleClassifier:
                 return heuristic_result("Polska", conf, reason)
 
             # Strong Hambo signature
-            # Threshold is parameterized for optimization
             if hambo_score > self.params.hambo_score_threshold and score_diff < -0.10:
                 bonus = 0.10 if is_square(avg_bars) else 0.0
                 conf = min(0.50, 0.35 + hambo_score * 0.20)
@@ -218,7 +217,6 @@ class StyleClassifier:
                 return heuristic_result("Menuett", 0.40, "Even graceful 3/4")
 
             # If we have a MODERATE Polska signal, prefer it over Unknown
-            # Threshold is parameterized for optimization
             if polska_score > self.params.polska_score_fallback:
                 return heuristic_result("Polska", 0.32, f"Moderate Polska signal ({polska_score:.2f})")
 
@@ -252,7 +250,7 @@ class StyleClassifier:
             # HAMBO RESCUE: Check for binary-detected Hambo
             # Similar to Polska rescue - Hambo can be misdetected as binary
             # ============================================================
-            # ADDED: Binary Hambo rescue (actual hambo_score range: 0.2-0.4)
+            # TODO: Need to parametarize hambo_score
             if hambo_score > 0.35 or (hambo_score > 0.25 and swing > 1.20):
                 return heuristic_result("Hambo", 0.40,
                     f"Binary-detected Hambo: score={hambo_score:.2f}, swing={swing:.2f}")
@@ -283,6 +281,7 @@ class StyleClassifier:
                     # High swing at walking tempo - probably Schottis
                     return heuristic_result("Schottis", 0.35,
                         f"High swing walking tempo ({int(bpm)} BPM, swing={swing:.2f})")
+                
             # Fallback Snoa detection based on swing alone (when BPM missing)
             elif not bpm and self.params.snoa_swing_fallback_min <= swing <= self.params.snoa_swing_fallback_max:
                 return heuristic_result("Snoa", 0.30,
@@ -295,11 +294,13 @@ class StyleClassifier:
                 if self.params.engelska_swing_min <= swing <= self.params.engelska_swing_max:
                     return heuristic_result("Engelska", 0.35,
                         f"Binary moderate swing ({swing:.2f}), fast tempo ({int(bpm)} BPM)")
+                
                 # Polka Logic: Fast Tempo, even beats
                 # Swing threshold is parameterized for optimization
                 elif swing < self.params.polka_swing_max:  # Clear Polka range
                     return heuristic_result("Polka", 0.40,
                         f"Fast even tempo ({int(bpm)} BPM, swing={swing:.2f})")
+                
                 # Only override to Polska if BOTH indicators are very strong
                 elif ternary_confidence > 0.65 and polska_score > 0.45:
                     return heuristic_result("Polska", 0.35,
@@ -310,7 +311,7 @@ class StyleClassifier:
                         f"Fast tempo ({int(bpm)} BPM)")
 
             # Fallback when BPM is missing: use swing alone
-            # Engelska/Polka have similar swing profiles - use Engelska range
+            # Engelska/Polka might have similar swing profiles - use Engelska range
             elif not bpm and self.params.engelska_swing_min <= swing <= 0.95:
                 return heuristic_result("Engelska", 0.30,
                     f"Binary moderate swing ({swing:.2f})")
@@ -337,34 +338,32 @@ class StyleClassifier:
 
         # REQUIRED: Must have meaningful ternary confidence
         # This is the primary indicator that meter detection was wrong
-        # Threshold is parameterized for optimization
         if ternary_conf < self.params.polska_rescue_ternary_min:
-            return False  # Not enough evidence of ternary meter
+            return False
 
         if ternary_conf > 0.65:
             signals += 2
         elif ternary_conf > 0.55:
             signals += 1
         elif ternary_conf >= 0.50:
-            signals += 1  # At threshold - still counts as a signal
+            signals += 1
 
         # Polska score requirement depends on ternary confidence
         # Higher ternary confidence = we can accept lower polska score
-        # Threshold is parameterized for optimization
         min_polska_score = 0.35 if ternary_conf >= 0.60 else self.params.polska_rescue_polska_score_min
 
         if polska_score < min_polska_score:
-            return False  # No polska rhythmic characteristics
+            return False
 
         if polska_score > 0.50:
             signals += 2
         elif polska_score > 0.35:
             signals += 1
         elif polska_score > 0.20:
-            signals += 1  # Weak but present polska signal
+            signals += 1
 
         # Tempo check: Polska bar tempo is typically 100-135
-        # Real polka is typically 120-160 BPM in 2/4
+        # Real polka might be typically 120-160 BPM in 2/4
         # BPM > 115 is more likely polka territory
         if bpm > 115:
             signals -= 1  # Penalty for polka-typical tempo
