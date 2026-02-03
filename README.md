@@ -2,6 +2,9 @@
 
 Swedish folk music audio analysis and dance style classification using machine learning.
 
+## Licensing disclaimer
+This repository is currently being refactored to honour the correct licenses from used libraries.
+
 ## Overview
 
 NeckenML Analyzer is a Python package that provides advanced audio analysis and automatic dance style classification for Swedish folk music. It uses a combination of signal processing, machine learning, and domain-specific heuristics to:
