@@ -70,6 +70,7 @@ jobs:
       - name: Install packages
         run: |
           python -m pip install --upgrade pip
+          pip install numpy Cython
           pip install -e packages/neckenml-core
           pip install -e packages/neckenml-analyzer[dev] || echo "Analyzer dependencies may fail in CI"
           pip install pytest

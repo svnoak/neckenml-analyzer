@@ -1,5 +1,7 @@
 """Database models for neckenml analyzer."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import List
