@@ -22,6 +22,10 @@ Usage:
     styles = classifier.classify(track, result)
 """
 
+# Extend namespace to include neckenml.core from neckenml-core package
+from pkgutil import extend_path
+__path__ = extend_path(__path__, __name__)
+
 __version__ = "0.3.0"
 
 # Re-export from core (MIT)

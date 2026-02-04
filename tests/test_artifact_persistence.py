@@ -4,7 +4,7 @@ Tests for artifact persistence and re-analysis functionality.
 
 import pytest
 import numpy as np
-from neckenml.analyzer.reanalysis import (
+from neckenml.core.reanalysis import (
     compute_derived_features,
     _recompute_folk_features,
     _recompute_swing_ratio,
