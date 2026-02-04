@@ -48,8 +48,13 @@ RUN pip install --no-cache-dir git+https://github.com/CPJKU/madmom.git
 # Copy the application code
 COPY . /app/
 
-# Install the neckenml-analyzer package with audio extras
-RUN pip3 install -e ".[audio]" || pip3 install -e .
+# Install all neckenml packages in the correct order
+RUN pip3 install -e packages/neckenml-core && \
+    pip3 install -e packages/neckenml-analyzer && \
+    pip3 install -e packages/neckenml
+
+# Install pytest for testing
+RUN pip3 install pytest pytest-cov
 
 # Create models directory
 RUN mkdir -p /root/.neckenml/models

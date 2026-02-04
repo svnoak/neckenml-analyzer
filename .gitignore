@@ -220,3 +220,13 @@ Dockerfile.test
 
 # Local audiofiles and testdata
 *.mp3
+*.wav
+*.flac
+
+# Removed from repo - internal tooling
+scripts/
+test_data/
+check_setup.py
+threshold_tuning.ipynb
+optimized_params.json
+docker-run.sh
