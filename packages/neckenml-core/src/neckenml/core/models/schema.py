@@ -1,10 +1,8 @@
 """Database models for neckenml analyzer."""
 
-from __future__ import annotations
-
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from sqlalchemy import String, Integer, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
@@ -30,14 +28,14 @@ class Track(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     title: Mapped[str] = mapped_column(String, index=True)
-    artist: Mapped[str | None] = mapped_column(String, nullable=True)
-    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    artist: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Analysis metadata
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    analysis_version: Mapped[str | None] = mapped_column(
+    analysis_version: Mapped[Optional[str]] = mapped_column(
         String, nullable=True, index=True
     )
 
@@ -158,7 +156,7 @@ class TrackDanceStyle(Base):
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
 
     # Feature embedding used for classification (217-dimensional vector)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(217), nullable=True)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(217), nullable=True)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(
