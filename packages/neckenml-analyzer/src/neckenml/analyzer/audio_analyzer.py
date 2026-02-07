@@ -24,7 +24,7 @@ class AudioAnalyzer:
         from .extractors.rhythm import RhythmExtractor
         from .extractors.structure import StructureExtractor
         from neckenml.core.classifier.style_head import ClassificationHead
-        from .folk_authenticity import FolkAuthenticityDetector
+        from neckenml.core.folk_authenticity import FolkAuthenticityDetector
         import essentia.standard as es
 
         self.audio_source = audio_source

@@ -14,23 +14,30 @@ class ClassificationHead:
 
     EXPECTED_FEATURE_COUNT = 217
 
+    # Fixed path for production: mount a Docker volume here so the trained head persists across upgrades.
+    DEFAULT_STYLE_HEAD_PATH = "/app/neckenml_style_head/custom_style_head.pkl"
+
     def __init__(self, model_path: Optional[str] = None):
         """
         Initialize the classification head.
 
         Args:
             model_path: Path to the trained model file. If None, tries:
-                1. Package's bundled pre-trained model
-                2. ~/.neckenml/custom_style_head.pkl
+                1. Default path (e.g. /app/neckenml_style_head/custom_style_head.pkl) if file exists
+                2. Package's bundled pre-trained model
+                3. ~/.neckenml/custom_style_head.pkl
         """
         if model_path is None:
-            package_model = os.path.join(
-                os.path.dirname(__file__), "..", "models", "pretrained", "custom_style_head.pkl"
-            )
-            if os.path.exists(package_model):
-                self.model_path = package_model
+            if os.path.exists(self.DEFAULT_STYLE_HEAD_PATH):
+                self.model_path = self.DEFAULT_STYLE_HEAD_PATH
             else:
-                self.model_path = os.path.expanduser("~/.neckenml/custom_style_head.pkl")
+                package_model = os.path.join(
+                    os.path.dirname(__file__), "..", "models", "pretrained", "custom_style_head.pkl"
+                )
+                if os.path.exists(package_model):
+                    self.model_path = package_model
+                else:
+                    self.model_path = os.path.expanduser("~/.neckenml/custom_style_head.pkl")
         else:
             self.model_path = model_path
 
