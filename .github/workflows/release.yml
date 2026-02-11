@@ -1,17 +1,24 @@
 # Publish neckenml-core, neckenml-analyzer, and neckenml (meta) to PyPI.
-# Which packages are published depends on the release tag or manual input.
-# Configure trusted publishing for all three projects on PyPI (see README).
+# Each package has its own job for clearer errors and independent publishing.
+# Configure trusted publishing for all three projects on PyPI.
+#
+# Versioning strategy (independent versions):
+#   - core-v1.2.3    → publishes neckenml-core only
+#   - analyzer-v1.0.0 → publishes neckenml-analyzer only
+#   - v1.0.0         → publishes neckenml (meta) only
+#   - release-v1.0.0 → publishes ALL packages (coordinated release)
+#
+# Bump neckenml (meta) when you want users to get new versions of deps.
 
 name: Release to PyPI
 
 on:
-  release:
-    types: [published]
   push:
     tags:
-      - 'v*'
-      - 'core-v*'
-      - 'analyzer-v*'
+      - 'v*'            # neckenml meta package only
+      - 'core-v*'       # neckenml-core only
+      - 'analyzer-v*'   # neckenml-analyzer only
+      - 'release-v*'    # all packages (coordinated release)
   workflow_dispatch:
     inputs:
       package:
@@ -26,88 +33,133 @@ on:
           - neckenml
 
 jobs:
-  build-and-publish:
+  resolve:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write  # Required for trusted publishing to PyPI
-
+    outputs:
+      publish_core: ${{ steps.resolve.outputs.core }}
+      publish_analyzer: ${{ steps.resolve.outputs.analyzer }}
+      publish_neckenml: ${{ steps.resolve.outputs.neckenml }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine readme-renderer[md]
-
       - name: Resolve which packages to publish
         id: resolve
         run: |
-          # Tag: from release, or from push (refs/tags/X -> X)
-          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          TAG="${{ github.ref_name }}"
           CHOICE="${{ github.event.inputs.package }}"
-          # Manual run: use input (empty when not workflow_dispatch)
+
           if [ -n "$CHOICE" ]; then
-            [ "$CHOICE" = "all" ] && echo "core=1" >> $GITHUB_OUTPUT && echo "analyzer=1" >> $GITHUB_OUTPUT && echo "neckenml=1" >> $GITHUB_OUTPUT
-            [ "$CHOICE" = "neckenml-core" ] && echo "core=1" >> $GITHUB_OUTPUT && echo "neckenml=1" >> $GITHUB_OUTPUT
-            [ "$CHOICE" = "neckenml-analyzer" ] && echo "analyzer=1" >> $GITHUB_OUTPUT && echo "neckenml=1" >> $GITHUB_OUTPUT
-            [ "$CHOICE" = "neckenml" ] && echo "neckenml=1" >> $GITHUB_OUTPUT
+            case "$CHOICE" in
+              all)
+                echo "core=true" >> $GITHUB_OUTPUT
+                echo "analyzer=true" >> $GITHUB_OUTPUT
+                echo "neckenml=true" >> $GITHUB_OUTPUT
+                ;;
+              neckenml-core)
+                echo "core=true" >> $GITHUB_OUTPUT
+                ;;
+              neckenml-analyzer)
+                echo "analyzer=true" >> $GITHUB_OUTPUT
+                ;;
+              neckenml)
+                echo "neckenml=true" >> $GITHUB_OUTPUT
+                ;;
+            esac
           else
-            # Tag-based: core-v* -> core + neckenml; analyzer-v* -> analyzer + neckenml; v* -> all
             case "$TAG" in
-              core-v*)  echo "core=1" >> $GITHUB_OUTPUT; echo "neckenml=1" >> $GITHUB_OUTPUT ;;
-              analyzer-v*) echo "analyzer=1" >> $GITHUB_OUTPUT; echo "neckenml=1" >> $GITHUB_OUTPUT ;;
-              *)        echo "core=1" >> $GITHUB_OUTPUT; echo "analyzer=1" >> $GITHUB_OUTPUT; echo "neckenml=1" >> $GITHUB_OUTPUT ;;
+              core-v*)
+                echo "core=true" >> $GITHUB_OUTPUT
+                ;;
+              analyzer-v*)
+                echo "analyzer=true" >> $GITHUB_OUTPUT
+                ;;
+              release-v*)
+                echo "core=true" >> $GITHUB_OUTPUT
+                echo "analyzer=true" >> $GITHUB_OUTPUT
+                echo "neckenml=true" >> $GITHUB_OUTPUT
+                ;;
+              v*)
+                echo "neckenml=true" >> $GITHUB_OUTPUT
+                ;;
             esac
           fi
-          echo "Resolved tag/choice: $TAG / $CHOICE"
-          echo "Publishing: core=${{ steps.resolve.outputs.core }}, analyzer=${{ steps.resolve.outputs.analyzer }}, neckenml=${{ steps.resolve.outputs.neckenml }}"
 
-      - name: Build packages
+  publish-core:
+    needs: resolve
+    if: needs.resolve.outputs.publish_core == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Build neckenml-core
         run: |
-          mkdir -p dist
-          [ "${{ steps.resolve.outputs.core }}" = "1" ] && (cd packages/neckenml-core && python -m build && mv dist/* ../../dist/)
-          [ "${{ steps.resolve.outputs.analyzer }}" = "1" ] && (cd packages/neckenml-analyzer && python -m build && mv dist/* ../../dist/)
-          [ "${{ steps.resolve.outputs.neckenml }}" = "1" ] && (cd packages/neckenml && python -m build && mv dist/* ../../dist/)
-          ls -la dist/
-
-      - name: Verify packages
-        run: |
-          twine check dist/*
-          echo "Package verification passed"
-
-      - name: Publish to PyPI
+          pip install build
+          cd packages/neckenml-core && python -m build
+      - name: Publish neckenml-core to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
+          packages-dir: packages/neckenml-core/dist/
 
-      - name: Create GitHub Release Assets
-        if: github.event_name == 'release'
+  publish-analyzer:
+    needs: resolve
+    if: needs.resolve.outputs.publish_analyzer == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Build neckenml-analyzer
         run: |
-          mkdir -p release-assets
-          cp dist/*.whl dist/*.tar.gz release-assets/ 2>/dev/null || true
-          echo "Release assets prepared"
+          pip install build
+          cd packages/neckenml-analyzer && python -m build
+      - name: Publish neckenml-analyzer to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/neckenml-analyzer/dist/
+
+  publish-neckenml:
+    needs: [resolve, publish-core, publish-analyzer]
+    # Run if neckenml is requested AND any triggered sibling jobs succeeded (or were skipped)
+    if: |
+      always() &&
+      needs.resolve.outputs.publish_neckenml == 'true' &&
+      !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Build neckenml
+        run: |
+          pip install build
+          cd packages/neckenml && python -m build
+      - name: Publish neckenml to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/neckenml/dist/
 
   notify:
-    needs: build-and-publish
+    needs: [publish-core, publish-analyzer, publish-neckenml]
     runs-on: ubuntu-latest
     if: always()
-
     steps:
       - name: Release Summary
         run: |
           echo "## NeckenML PyPI Release" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.build-and-publish.result }}" == "success" ]; then
-            echo "Packages published successfully." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install with: \`pip install neckenml\`, \`pip install neckenml-core\`, or \`pip install neckenml-analyzer\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Release failed. Please review the logs." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| Package | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| neckenml-core | ${{ needs.publish-core.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| neckenml-analyzer | ${{ needs.publish-analyzer.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| neckenml | ${{ needs.publish-neckenml.result }} |" >> $GITHUB_STEP_SUMMARY

@@ -27,8 +27,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "neckenml-core>=0.3.0",
-    "neckenml-analyzer>=0.3.0",
+    "neckenml-core>=0.3.0,<1.0.0",
+    "neckenml-analyzer>=0.3.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
