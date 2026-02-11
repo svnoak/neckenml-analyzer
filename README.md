@@ -50,7 +50,7 @@ mkdir -p ~/.neckenml/models
 curl -L -o ~/.neckenml/models/msd-musicnn-1.pb \
   https://essentia.upf.edu/models/feature-extractors/musicnn/msd-musicnn-1.pb
 curl -L -o ~/.neckenml/models/voice_instrumental-musicnn-msd-1.pb \
-  https://essentia.upf.edu/models/audio-event-recognition/voice_instrumental/voice_instrumental-musicnn-msd-1.pb
+  https://essentia.upf.edu/models/classification-heads/voice_instrumental/voice_instrumental-msd-musicnn-1.pb
 ```
 
 ## Supported Dance Styles
