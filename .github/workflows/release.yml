@@ -1,3 +1,6 @@
+# Build and publish neckenml-core and neckenml-analyzer to PyPI.
+# Configure trusted publishing for both projects on PyPI (see README).
+
 name: Release to PyPI
 
 on:
@@ -5,10 +8,15 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release (e.g., 0.1.0)'
+      package:
+        description: 'Package(s) to release'
         required: true
-        type: string
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - neckenml-core
+          - neckenml-analyzer
 
 jobs:
   build-and-publish:
@@ -31,25 +39,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine readme-renderer[md]
 
-      - name: Build package
+      - name: Build packages
+        id: build
         run: |
-          python -m build
-          echo "Package built successfully"
+          mkdir -p dist
+          # On release event, publish both; on workflow_dispatch use selected package
+          PACKAGE="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.package || 'all' }}"
+          if [ "$PACKAGE" = "all" ] || [ "$PACKAGE" = "neckenml-core" ]; then
+            cd packages/neckenml-core && python -m build && mv dist/* ../../dist/ && cd ../..
+          fi
+          if [ "$PACKAGE" = "all" ] || [ "$PACKAGE" = "neckenml-analyzer" ]; then
+            cd packages/neckenml-analyzer && python -m build && mv dist/* ../../dist/ && cd ../..
+          fi
+          ls -la dist/
 
-      - name: Verify package
+      - name: Verify packages
         run: |
           twine check dist/*
           echo "Package verification passed"
 
       - name: Publish to PyPI
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         uses: pypa/gh-action-pypi-publish@release/v1
-        # Uses OpenID Connect (trusted publishing) - no password needed!
+        with:
+          packages-dir: dist/
 
       - name: Create GitHub Release Assets
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'release'
         run: |
-          cp dist/*.whl dist/*.tar.gz . || true
+          mkdir -p release-assets
+          cp dist/*.whl dist/*.tar.gz release-assets/ 2>/dev/null || true
           echo "Release assets prepared"
 
   notify:
@@ -60,12 +78,14 @@ jobs:
     steps:
       - name: Release Summary
         run: |
-          echo "## NeckenML Analyzer Release" >> $GITHUB_STEP_SUMMARY
+          echo "## NeckenML PyPI Release" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.build-and-publish.result }}" == "success" ]; then
-            echo "Package published successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "Packages published successfully." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install with: \`pip install neckenml-analyzer\`" >> $GITHUB_STEP_SUMMARY
+            echo "Install with:" >> $GITHUB_STEP_SUMMARY
+            echo "- \`pip install neckenml-core\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`pip install neckenml-analyzer\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "Release failed. Please review the logs." >> $GITHUB_STEP_SUMMARY
           fi

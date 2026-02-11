@@ -3,8 +3,8 @@
 Test that the parameterized classifier works correctly.
 """
 
-from neckenml.classifier import StyleClassifier
-from neckenml.classifier.params import ClassifierParams
+from neckenml.core.classifier import StyleClassifier
+from neckenml.core.classifier.params import ClassifierParams
 
 
 def test_default_params():
