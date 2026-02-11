@@ -2,6 +2,18 @@
 
 Audio analysis and dance style classification for Swedish folk music.
 
+## License
+
+This repository is **dual-licensed** by package:
+
+| Package | License | Use in proprietary software |
+|---------|---------|-----------------------------|
+| **neckenml-core** | [MIT](packages/neckenml-core/LICENSE) | Yes (classification only, no audio stack) |
+| **neckenml-analyzer** | [AGPL-3.0](LICENSE) | No (copyleft; network use triggers source sharing) |
+| **neckenml** (meta) | [AGPL-3.0](LICENSE) | No (pulls in analyzer) |
+
+Use **neckenml-core** when you only need style classification from pre-computed features and want to keep your project under a non-copyleft license. Use **neckenml** or **neckenml-analyzer** when you need full audio analysis and can comply with AGPL.
+
 ## Quick Start
 
 ```bash
@@ -89,11 +101,6 @@ pip install pytest
 
 pytest
 ```
-
-## License
-
-- **neckenml-core**: MIT
-- **neckenml-analyzer** / **neckenml**: AGPL-3.0
 
 ## Links
 
