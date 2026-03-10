@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neckenml-analyzer"
-version = "0.3.0"
+version = "0.3.1"
 description = "Audio analysis for Swedish folk music using Essentia (AGPL licensed)"
 readme = "README.md"
 requires-python = ">=3.9"
