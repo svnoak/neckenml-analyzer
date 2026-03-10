@@ -13,9 +13,30 @@ import numpy as np
 from typing import Dict, Any, Optional
 
 
+def rederive_bars_from_beats(beat_times: list, beats_per_bar: int) -> list:
+    """
+    Re-derive bar boundaries from beat timestamps.
+
+    Takes every Nth beat as a bar start, where N = beats_per_bar.
+    Used to correct bar positions when the detected meter differs
+    from the expected meter for a classified dance style.
+
+    Args:
+        beat_times: List of beat timestamps in seconds
+        beats_per_bar: Target beats per bar (e.g. 3 for Polska, 4 for Schottis)
+
+    Returns:
+        List of bar boundary timestamps
+    """
+    if not beat_times or beats_per_bar < 1:
+        return []
+    return [beat_times[i] for i in range(0, len(beat_times), beats_per_bar)]
+
+
 def compute_derived_features(raw_artifacts: Dict[str, Any],
                             metadata_context: str = "",
-                            new_classifier=None) -> Dict[str, Any]:
+                            new_classifier=None,
+                            beats_per_bar_override: int = None) -> Dict[str, Any]:
     """
     Computes all derived features from stored raw artifacts.
 
@@ -35,6 +56,8 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
             - dynamics: envelope, beat_activations
         metadata_context: Optional metadata for classification hints
         new_classifier: Optional custom classifier (defaults to ClassificationHead)
+        beats_per_bar_override: Optional override for beats per bar (e.g. from dance_style_config).
+            When provided, bars are re-derived from beat timestamps using this grouping.
 
     Returns:
         Dict containing all derived features, matching the output of analyze_file()
@@ -143,6 +166,11 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
     # Get meter
     beat_info = np.array(rhythm.get("beat_info", []))
     meter_numerator = int(np.max(beat_info[:, 1])) if len(beat_info) > 0 else 0
+
+    # Apply beats_per_bar override if provided
+    if beats_per_bar_override and len(beat_times) > 0:
+        bars = rederive_bars_from_beats(beat_times.tolist(), beats_per_bar_override)
+        meter_numerator = beats_per_bar_override
 
     # --- BUILD RESULT ---
     result = {

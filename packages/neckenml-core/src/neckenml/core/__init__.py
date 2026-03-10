@@ -20,7 +20,7 @@ from neckenml.core.classifier import StyleClassifier, ClassificationHead, Classi
 from neckenml.core.sources import AudioSource, FileAudioSource
 from neckenml.core.training import TrainingService
 from neckenml.core.folk_authenticity import FolkAuthenticityDetector
-from neckenml.core.reanalysis import compute_derived_features
+from neckenml.core.reanalysis import compute_derived_features, rederive_bars_from_beats
 
 __all__ = [
     # Database models
@@ -40,4 +40,5 @@ __all__ = [
     # Re-analysis (from stored artifacts, no audio needed)
     "FolkAuthenticityDetector",
     "compute_derived_features",
+    "rederive_bars_from_beats",
 ]
