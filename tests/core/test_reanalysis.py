@@ -56,12 +56,14 @@ class TestComputeDerivedFeatures:
             assert key in result, f"Missing required key: {key}"
 
     def test_embedding_dimensions(self, sample_raw_artifacts):
-        """Test that embedding has correct dimensions (217)."""
+        """Test that embedding has correct dimensions (214)."""
         result = compute_derived_features(sample_raw_artifacts)
 
-        # 200 (musicnn) + 9 (folk) + 1 (swing) + 3 (layout) + 1 (ternary)
-        # + 1 (vocal) + 1 (articulation) + 1 (bounciness) = 217
-        assert len(result['embedding']) == 217
+        # 200 (musicnn) + 8 (folk, punchiness now in feel_profile) + 1 (swing)
+        # + 1 (ternary) + 1 (vocal) + 1 (articulation) + 1 (bounciness)
+        # + 1 (attack_b2_drag) = 214. rms/zcr/onset_rate/punchiness moved
+        # out into feel_profile (v5).
+        assert len(result['embedding']) == 214
 
     def test_tempo_calculation(self, sample_raw_artifacts):
         """Test that tempo is calculated correctly."""

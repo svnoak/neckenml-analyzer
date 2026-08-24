@@ -154,7 +154,10 @@ def test_compute_derived_features_complete():
         assert field in features, f"Missing field: {field}"
 
     # Verify embedding has correct dimensionality
-    assert len(features["embedding"]) == 217  # 200 + 9 + 1 + 3 + 1 + 1 + 1 + 1
+    # 200 (musicnn) + 8 (folk, punchiness now in feel_profile) + 1 (swing)
+    # + 1 (ternary) + 1 (vocal) + 1 (articulation) + 1 (bounciness)
+    # + 1 (attack_b2_drag) = 214.
+    assert len(features["embedding"]) == 214
 
     # Verify reasonable values
     assert features["is_likely_instrumental"] is True  # 0.8 > 0.2

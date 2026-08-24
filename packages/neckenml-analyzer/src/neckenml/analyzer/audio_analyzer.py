@@ -186,8 +186,10 @@ class AudioAnalyzer:
             onset_rate, _ = self.onset_rate_algo(audio)
 
             return [float(rms), float(zcr), float(onset_rate)]
-        except Exception:
-            # Fallback (return 3 zeros since we expect 3 features now)
+        except Exception as e:
+            # Log instead of silently swallowing, so a real failure here is diagnosable.
+            print(f"   [WARNING] _extract_lightweight_features failed, returning zeros: {e}")
+            traceback.print_exc()
             return [0.0, 0.0, 0.0]
 
     def analyze_file(self, file_path: str, metadata_context: str = "", return_artifacts: bool = False) -> dict:
@@ -246,11 +248,19 @@ class AudioAnalyzer:
                 act, beat_times, beat_info, ternary_confidence, beat_artifacts = self.rhythm_extractor.analyze_beats(
                     file_path, metadata_context, return_artifacts=True
                 )
-                folk_features, rhythm_artifacts = self.rhythm_extractor.extract_folk_features(beat_times, act, return_artifacts=True)
             else:
                 act, beat_times, beat_info, ternary_confidence = self.rhythm_extractor.analyze_beats(file_path, metadata_context)
-                folk_features = self.rhythm_extractor.extract_folk_features(beat_times, act)
                 beat_artifacts = {}
+
+            # beat_info rows are [time, position]; position feeds phase-alignment below.
+            beat_positions = beat_info[:, 1].astype(int).tolist() if len(beat_info) > 0 else []
+
+            if return_artifacts:
+                folk_features, rhythm_artifacts = self.rhythm_extractor.extract_folk_features(
+                    beat_times, act, beat_positions=beat_positions, return_artifacts=True
+                )
+            else:
+                folk_features = self.rhythm_extractor.extract_folk_features(beat_times, act, beat_positions=beat_positions)
                 rhythm_artifacts = {}
 
             bars = self.rhythm_extractor.get_bars(beat_info)
@@ -259,12 +269,13 @@ class AudioAnalyzer:
             print(f"   [ANALYSIS] Doing swing & feel analysis...")
             if return_artifacts:
                 swing_ratio, swing_artifacts = calculate_swing_ratio(file_path, beat_times, return_artifacts=True)
-                feel_data, feel_artifacts = analyze_feel(audio_16k, beat_times, swing_ratio, self.envelope_algo, return_artifacts=True)
             else:
                 swing_ratio = calculate_swing_ratio(file_path, beat_times)
-                feel_data = analyze_feel(audio_16k, beat_times, swing_ratio, self.envelope_algo)
                 swing_artifacts = {}
-                feel_artifacts = {}
+            # feel artifacts (incl. envelope) requested unconditionally --
+            # attack_b2_drag below needs the envelope even when the caller
+            # didn't ask to keep the rest of the raw artifacts.
+            feel_data, feel_artifacts = analyze_feel(audio_16k, beat_times, swing_ratio, self.envelope_algo, return_artifacts=True)
 
             # --- 5. STATS ---
             print(f"   [ANALYSIS] Extracting layout stats...")
@@ -275,13 +286,22 @@ class AudioAnalyzer:
             bounciness = float(feel_data['bounciness'])
             ternary_conf = float(ternary_confidence)
 
+            from neckenml.core.reanalysis import compute_attack_b2_drag
+            attack_b2_drag = compute_attack_b2_drag(
+                beat_times=beat_times.tolist() if hasattr(beat_times, 'tolist') else list(beat_times),
+                beat_positions=beat_positions,
+                envelope=feel_artifacts.get('envelope', []),
+                duration_seconds=len(audio_16k) / 16000.0,
+            )
+
             # --- 6. PREDICT ---
             print(f"   [ANALYSIS] Predict style...")
-            # Note: Ensure ClassificationHead.EXPECTED_FEATURE_COUNT = 217
+            # rms/zcr/onset_rate and punchiness describe feel (jumpy vs. smooth),
+            # not style, so they're excluded here and reported as feel_profile
+            # instead. Vector size must match ClassificationHead.EXPECTED_FEATURE_COUNT.
             folk_vector_list = [
                 folk_features["bpm"],
                 folk_features["avg_ibi"],
-                folk_features["punchiness"],
                 folk_features["r1_mean"],
                 folk_features["r2_mean"],
                 folk_features["r3_mean"],
@@ -292,13 +312,13 @@ class AudioAnalyzer:
 
             full_vector = np.concatenate([
                 avg_embedding,      # 200
-                folk_vector_list,   # 9
+                folk_vector_list,   # 8
                 [swing_ratio],      # 1
-                layout_stats,       # 3 
                 [ternary_conf],     # 1
                 [voice_conf],       # 1
                 [articulation],     # 1
-                [bounciness]        # 1
+                [bounciness],       # 1
+                [attack_b2_drag]    # 1  -- 214 total (v6)
             ])
             
             predicted_style, ml_confidence = self.head.predict(full_vector)
@@ -355,14 +375,22 @@ class AudioAnalyzer:
                 "swing_ratio": float(swing_ratio),
                 "articulation": articulation,
                 "bounciness": bounciness,
+                "attack_b2_drag": float(attack_b2_drag),
                 "avg_beat_ratios": [
                     folk_features["r1_mean"],
                     folk_features["r2_mean"],
                     folk_features["r3_mean"]
                 ],
                 "punchiness": punchiness,
+                "feel_profile": {
+                    "rms": float(layout_stats[0]),
+                    "zcr": float(layout_stats[1]),
+                    "onset_rate": float(layout_stats[2]),
+                    "punchiness": float(punchiness)
+                },
                 "polska_score": polska_score,
                 "hambo_score": hambo_score,
+                "phase_offset": folk_features.get("phase_offset", 0),
                 "ternary_confidence": ternary_conf,
                 "meter": f"{meter_numerator}/4",
                 "bars": [float(b) for b in bars],

@@ -155,8 +155,9 @@ class TrackDanceStyle(Base):
     dance_style: Mapped[str] = mapped_column(String, index=True)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
 
-    # Feature embedding used for classification (217-dimensional vector)
-    embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(217), nullable=True)
+    # Feature embedding used for classification (214-dimensional vector, v6 --
+    # see ClassificationHead.EXPECTED_FEATURE_COUNT)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(214), nullable=True)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(

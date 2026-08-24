@@ -61,7 +61,7 @@ def sample_analysis_features():
     return {
         "ml_suggested_style": "Polska",
         "ml_confidence": 0.85,
-        "embedding": list(np.random.randn(217)),
+        "embedding": list(np.random.randn(214)),
         "loudness_lufs": -14.0,
         "tempo_bpm": 120.0,
         "bpm_stability": 0.92,

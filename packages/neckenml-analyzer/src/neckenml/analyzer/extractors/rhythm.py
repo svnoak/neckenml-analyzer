@@ -213,13 +213,18 @@ class RhythmExtractor:
         
         return np.clip(conf, 0.0, 1.0)
 
-    def extract_folk_features(self, beat_times, audio_signal, return_artifacts=False):
+    def extract_folk_features(self, beat_times, audio_signal, beat_positions=None, return_artifacts=False):
         """
         Calculates specific features relevant to folk dance styles.
 
         Args:
             beat_times: Beat positions in seconds
             audio_signal: Audio waveform
+            beat_positions: 1/2/3-within-bar position of each beat (from
+                analyze_beats' beat_info). Used to phase-align triplet
+                grouping: ratios start counting from the first beat marked
+                as the downbeat (position==1) instead of always index 0.
+                Pass None to group from index 0 unconditionally.
             return_artifacts: If True, returns (features_dict, artifacts_dict)
         """
         import numpy as np
@@ -237,11 +242,18 @@ class RhythmExtractor:
 
         bpm_stability = 1.0 - (np.std(ibis) / avg_ibi) # 1.0 is perfect, 0.0 is chaotic
 
+        offset = 0
+        if beat_positions is not None and len(beat_positions) > 0:
+            for i, pos in enumerate(beat_positions):
+                if pos == 1:
+                    offset = i
+                    break
+
         # 2. Ratios & Variances
         ratios_1, ratios_2, ratios_3 = [], [], []
         triplet_variances = []
 
-        for i in range(0, len(ibis)-2, 3):
+        for i in range(offset, len(ibis)-2, 3):
             total = np.sum(ibis[i:i+3])
             if total > 0:
                 r = ibis[i:i+3] / total
@@ -269,14 +281,23 @@ class RhythmExtractor:
             beat_energy += energy
             activations.append(energy)
             
-        punchiness = np.tanh((beat_energy / len(beat_times)) * 10) if len(beat_times) > 0 else 0
+        # Coefficient of variation, not raw mean: raw per-beat energy scales
+        # with recording loudness, so a scale-invariant measure of how much
+        # beat-to-beat energy varies is what "punchiness" should capture.
+        activations_arr = np.array(activations)
+        if len(beat_times) > 0 and activations_arr.mean() > 0:
+            cv = activations_arr.std() / activations_arr.mean()
+            punchiness = np.tanh(cv * 1.5)
+        else:
+            punchiness = 0
 
         # 4. Advanced Scoring
         polska_score, hambo_score = self._calculate_ternary_signatures(
             ratios=[r1_mean, r2_mean, r3_mean],
             triplet_variances=triplet_variances,
             intervals=ibis,
-            activations=activations
+            activations=activations,
+            activation_offset=offset
         )
 
         features = {
@@ -288,7 +309,8 @@ class RhythmExtractor:
             "r3_mean": float(r3_mean),
             "polska_score": float(polska_score),
             "hambo_score": float(hambo_score),
-            "bpm_stability": float(bpm_stability)
+            "bpm_stability": float(bpm_stability),
+            "phase_offset": offset
         }
 
         if return_artifacts:
@@ -301,18 +323,20 @@ class RhythmExtractor:
 
         return features
     
-    def _calculate_ternary_signatures(self, ratios, triplet_variances, intervals, activations):
+    def _calculate_ternary_signatures(self, ratios, triplet_variances, intervals, activations, activation_offset=0):
         import numpy as np
         r1, r2, r3 = ratios
-        
+
         timing_variance = np.mean(triplet_variances) if triplet_variances else 0.0
         interval_cv = np.std(intervals) / np.mean(intervals) if np.mean(intervals) > 0 else 0.0
-        
-        # Activation Analysis
+
+        # Activation Analysis. activation_offset honors phase-alignment (see
+        # extract_folk_features) so beat-1 sampling lines up with the same
+        # downbeat position used for the r1/r2/r3 ratios above.
         downbeat_dominance = 0.33
-        if len(activations) >= 6:
+        if len(activations) >= activation_offset + 6:
             # Mean energy of Beat 1s
-            avg_b1 = np.mean(activations[0::3])
+            avg_b1 = np.mean(activations[activation_offset::3])
             total = np.mean(activations) * 3
             if total > 0: downbeat_dominance = avg_b1 / total
 
