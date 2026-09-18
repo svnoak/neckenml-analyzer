@@ -79,6 +79,7 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
 
     # Core rhythm data (from Madmom RNN)
     beat_times = np.array(rhythm.get("beats", []))
+    beat_positions = rhythm.get("beat_positions", [])
     bars = rhythm.get("bars", [])
     ternary_conf = rhythm.get("ternary_confidence", 0.5)
     avg_embedding = np.array(musicnn.get("avg_embedding", []))
@@ -102,7 +103,8 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
     folk_features = _recompute_folk_features(
         beat_times=beat_times,
         beat_activations=beat_activations,
-        intervals=intervals
+        intervals=intervals,
+        beat_positions=beat_positions
     )
 
     # --- RECOMPUTE SWING FROM STORED ONSETS ---
@@ -111,19 +113,27 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
         onset_times=onsets_data.get("librosa_onset_times", [])
     )
 
+    folk_features["hambo_score"] = compute_hambo_score(folk_features["r3_mean"], swing_ratio)
+
     # --- RECOMPUTE FEEL FROM STORED ENVELOPE ---
     articulation, bounciness = _recompute_feel(
         envelope=dynamics.get("envelope", []),
         swing_ratio=swing_ratio
     )
 
-    # --- BUILD FULL FEATURE VECTOR ---
-    layout_stats = [rms, zcr, onset_rate]
+    attack_b2_drag = compute_attack_b2_drag(
+        beat_times=beat_times.tolist() if hasattr(beat_times, "tolist") else list(beat_times),
+        beat_positions=beat_positions,
+        envelope=dynamics.get("envelope", []),
+        duration_seconds=audio_stats.get("duration_seconds"),
+    )
 
+    # --- BUILD FULL FEATURE VECTOR ---
+    # rms/zcr/onset_rate/punchiness describe feel (jumpy vs. smooth), not
+    # style, so they're excluded here and reported as feel_profile below.
     folk_vector_list = [
         folk_features["bpm"],
         folk_features["avg_ibi"],
-        folk_features["punchiness"],
         folk_features["r1_mean"],
         folk_features["r2_mean"],
         folk_features["r3_mean"],
@@ -134,13 +144,13 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
 
     full_vector = np.concatenate([
         avg_embedding,      # 200
-        folk_vector_list,   # 9
+        folk_vector_list,   # 8
         [swing_ratio],      # 1
-        layout_stats,       # 3
         [ternary_conf],     # 1
         [vocal_score],      # 1
         [articulation],     # 1
-        [bounciness]        # 1
+        [bounciness],       # 1
+        [attack_b2_drag]    # 1  -- 214 total (v6)
     ])
 
     # --- PREDICT STYLE ---
@@ -185,14 +195,22 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
         "swing_ratio": float(swing_ratio),
         "articulation": float(articulation),
         "bounciness": float(bounciness),
+        "attack_b2_drag": float(attack_b2_drag),
         "avg_beat_ratios": [
             folk_features["r1_mean"],
             folk_features["r2_mean"],
             folk_features["r3_mean"]
         ],
         "punchiness": folk_features["punchiness"],
+        "feel_profile": {
+            "rms": float(rms),
+            "zcr": float(zcr),
+            "onset_rate": float(onset_rate),
+            "punchiness": float(folk_features["punchiness"])
+        },
         "polska_score": folk_features["polska_score"],
         "hambo_score": folk_features["hambo_score"],
+        "phase_offset": folk_features.get("phase_offset", 0),
         "ternary_confidence": float(ternary_conf),
         "meter": f"{meter_numerator}/4",
         "bars": [float(b) for b in bars],
@@ -208,13 +226,21 @@ def compute_derived_features(raw_artifacts: Dict[str, Any],
     return result
 
 
-def _recompute_folk_features(beat_times, beat_activations, intervals):
-    """Recompute folk features from stored beat data."""
+def _recompute_folk_features(beat_times, beat_activations, intervals, beat_positions=None):
+    """Recompute folk features from stored beat data.
+
+    beat_positions (1/2/3-within-bar position of each beat, from
+    rhythm.py's beat_positions artifact) phase-aligns triplet grouping:
+    r1/r2/r3 counting starts from the first beat marked as the downbeat
+    (position==1) instead of always index 0. Pass None/empty to group
+    from index 0 unconditionally (e.g. older analyses that never stored
+    beat_positions)."""
     if len(beat_times) < 12:
         return {
             "bpm": 0.0, "avg_ibi": 0.0, "punchiness": 0.0,
             "r1_mean": 0.33, "r2_mean": 0.33, "r3_mean": 0.34,
-            "polska_score": 0.0, "hambo_score": 0.0, "bpm_stability": 0.0
+            "polska_score": 0.0, "hambo_score": 0.0, "bpm_stability": 0.0,
+            "phase_offset": 0
         }
 
     # Use stored intervals if available, otherwise compute
@@ -228,17 +254,25 @@ def _recompute_folk_features(beat_times, beat_activations, intervals):
         return {
             "bpm": 0.0, "avg_ibi": 0.0, "punchiness": 0.0,
             "r1_mean": 0.33, "r2_mean": 0.33, "r3_mean": 0.34,
-            "polska_score": 0.0, "hambo_score": 0.0, "bpm_stability": 0.0
+            "polska_score": 0.0, "hambo_score": 0.0, "bpm_stability": 0.0,
+            "phase_offset": 0
         }
 
     bpm = 60.0 / avg_ibi
     bpm_stability = 1.0 - (np.std(ibis) / avg_ibi)
 
+    offset = 0
+    if beat_positions is not None and len(beat_positions) > 0:
+        for i, pos in enumerate(beat_positions):
+            if pos == 1:
+                offset = i
+                break
+
     # Ratios
     ratios_1, ratios_2, ratios_3 = [], [], []
     triplet_variances = []
 
-    for i in range(0, len(ibis)-2, 3):
+    for i in range(offset, len(ibis)-2, 3):
         total = np.sum(ibis[i:i+3])
         if total > 0:
             r = ibis[i:i+3] / total
@@ -251,9 +285,13 @@ def _recompute_folk_features(beat_times, beat_activations, intervals):
     r2_mean = np.mean(ratios_2) if ratios_2 else 0.33
     r3_mean = np.mean(ratios_3) if ratios_3 else 0.34
 
-    # Punchiness from stored activations
-    if beat_activations:
-        punchiness = np.tanh((np.sum(beat_activations) / len(beat_activations)) * 10)
+    # Coefficient of variation, not raw mean: beat_activations is raw
+    # per-beat energy, which scales with recording loudness, so a
+    # scale-invariant measure of beat-to-beat variation is what
+    # "punchiness" should capture.
+    if beat_activations and np.mean(beat_activations) > 0:
+        cv = np.std(beat_activations) / np.mean(beat_activations)
+        punchiness = np.tanh(cv * 1.5)
     else:
         punchiness = 0.0
 
@@ -262,7 +300,8 @@ def _recompute_folk_features(beat_times, beat_activations, intervals):
         ratios=[r1_mean, r2_mean, r3_mean],
         triplet_variances=triplet_variances,
         intervals=ibis,
-        activations=beat_activations
+        activations=beat_activations,
+        activation_offset=offset
     )
 
     return {
@@ -274,22 +313,25 @@ def _recompute_folk_features(beat_times, beat_activations, intervals):
         "r3_mean": float(r3_mean),
         "polska_score": float(polska_score),
         "hambo_score": float(hambo_score),
-        "bpm_stability": float(bpm_stability)
+        "bpm_stability": float(bpm_stability),
+        "phase_offset": offset
     }
 
 
-def _calculate_ternary_signatures(ratios, triplet_variances, intervals, activations):
+def _calculate_ternary_signatures(ratios, triplet_variances, intervals, activations, activation_offset=0):
     """Calculate polska/hambo signature scores."""
     r1, r2, r3 = ratios
 
     timing_variance = np.mean(triplet_variances) if triplet_variances else 0.0
     interval_cv = np.std(intervals) / np.mean(intervals) if np.mean(intervals) > 0 else 0.0
 
-    # Activation Analysis
+    # Activation Analysis. activation_offset honors phase-alignment (see
+    # _recompute_folk_features) so the beat-1 sampling below lines up with
+    # the same downbeat position used for the r1/r2/r3 ratios above.
     downbeat_dominance = 0.33
-    if activations and len(activations) >= 6:
+    if activations and len(activations) >= activation_offset + 6:
         activations_arr = np.array(activations)
-        avg_b1 = np.mean(activations_arr[0::3])
+        avg_b1 = np.mean(activations_arr[activation_offset::3])
         total = np.mean(activations_arr) * 3
         if total > 0:
             downbeat_dominance = avg_b1 / total
@@ -303,16 +345,25 @@ def _calculate_ternary_signatures(ratios, triplet_variances, intervals, activati
     if downbeat_dominance < 0.38:
         polska_score += 0.15
 
-    # Hambo score
-    hambo_score = 0.0
-    if r1 > 0.38:
-        hambo_score += 0.30 + min(0.20, (r1 - 0.38) * 2)
-    if timing_variance < 0.004:
-        hambo_score += 0.20
-    if downbeat_dominance > 0.40:
-        hambo_score += 0.20
+    # hambo_score is computed separately by compute_hambo_score() once
+    # swing_ratio is available (see compute_derived_features) -- r1/
+    # timing_variance/downbeat_dominance based scoring here was proven
+    # backwards/flat against confirmed data and replaced.
+    return min(1.0, polska_score), 0.0
 
-    return min(1.0, polska_score), min(1.0, hambo_score)
+
+def compute_hambo_score(r3, swing_ratio, swing_strong=1.30, swing_medium=1.15, r3_threshold=0.332):
+    """Validated against confirmed data (ml-trainer, "hambo_score_v2_test"):
+    F1 0.150 -> 0.419 vs the r1/timing_variance/downbeat_dominance formula
+    it replaces."""
+    score = 0.0
+    if swing_ratio > swing_strong:
+        score += 0.55
+    elif swing_ratio > swing_medium:
+        score += 0.30
+    if r3 < r3_threshold:
+        score += 0.25
+    return min(1.0, score)
 
 
 def _recompute_swing_ratio(beat_times, onset_times):
@@ -344,6 +395,45 @@ def _recompute_swing_ratio(beat_times, onset_times):
         return 1.0
 
     return float(np.median(all_ratios))
+
+
+def compute_attack_b2_drag(beat_times, beat_positions, envelope, duration_seconds):
+    """Envelope rise-steepness at beat 2 vs. beats 1 and 3, averaged across
+    triplet occurrences. Validated in ml-trainer/tuner/beat2_drag_research.py
+    (Polska vs Hambo: F=8.9, p=0.003, -0.16 correlated with r2_mean)."""
+    if len(beat_times) < 12 or not envelope or not duration_seconds or len(beat_positions) < len(beat_times):
+        return 0.0
+
+    envelope = np.asarray(envelope, dtype=float)
+    env_fps = len(envelope) / duration_seconds
+    if env_fps <= 0:
+        return 0.0
+
+    def attack_steepness(t, pre_s=0.02, post_s=0.20):
+        start_idx = max(0, int((t - pre_s) * env_fps))
+        end_idx = min(len(envelope), int((t + post_s) * env_fps))
+        if end_idx - start_idx < 3:
+            return np.nan
+        window = envelope[start_idx:end_idx]
+        peak_idx = int(np.argmax(window))
+        peak_val = window[peak_idx]
+        if peak_val <= 1e-6:
+            return np.nan
+        rise = peak_val - window[0]
+        if rise <= 0:
+            return np.nan
+        return float(rise / (max(peak_idx, 1) / env_fps))
+
+    attack_vals = [attack_steepness(t) for t in beat_times]
+    diffs = []
+    n = min(len(attack_vals), len(beat_positions))
+    for i in range(n - 2):
+        if beat_positions[i] == 1 and beat_positions[i + 1] == 2 and beat_positions[i + 2] == 3:
+            v1, v2, v3 = attack_vals[i], attack_vals[i + 1], attack_vals[i + 2]
+            if np.isnan(v1) or np.isnan(v2) or np.isnan(v3):
+                continue
+            diffs.append(v2 - (v1 + v3) / 2.0)
+    return float(np.mean(diffs)) if diffs else 0.0
 
 
 def _recompute_feel(envelope, swing_ratio):

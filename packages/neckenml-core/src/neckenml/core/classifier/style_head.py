@@ -10,9 +10,12 @@ class ClassificationHead:
     """
 
     # Increment this when changing feature vector composition
-    FEATURE_VERSION = 4
+    FEATURE_VERSION = 6
 
-    EXPECTED_FEATURE_COUNT = 217
+    # v5: rms/zcr/onset_rate/punchiness moved to a separate feel_profile
+    # output. They describe feel (jumpy vs. smooth), not style.
+    # v6: added attack_b2_drag.
+    EXPECTED_FEATURE_COUNT = 214
 
     # Fixed path for production: mount a Docker volume here so the trained head persists across upgrades.
     DEFAULT_STYLE_HEAD_PATH = "/app/neckenml_style_head/custom_style_head.pkl"
@@ -119,26 +122,27 @@ class ClassificationHead:
         print(f"Validating {len(embeddings)} samples against expected size {self.EXPECTED_FEATURE_COUNT}...")
 
         for emb, lbl in zip(embeddings, labels):
-            # Only keep vectors that match the current version (217)
+            # Only keep vectors that match the current version.
             if len(emb) == self.EXPECTED_FEATURE_COUNT:
                 valid_embeddings.append(emb)
                 valid_labels.append(lbl)
 
         if len(valid_embeddings) == 0:
             print(f"[WARNING] No valid samples found! All {len(embeddings)} inputs were the wrong size.")
-            print("Action: You need to re-analyze tracks to generate new 217-len vectors.")
+            print(f"Action: You need to re-analyze tracks to generate new {self.EXPECTED_FEATURE_COUNT}-len vectors.")
             return
 
-        print(f"Training Head on {len(labels)} examples...")
+        print(f"Training Head on {len(valid_labels)} examples...")
 
-        X = np.array(embeddings)
-        y = np.array(labels)
+        X = np.array(valid_embeddings)
+        y = np.array(valid_labels)
 
         # 1. Normalize
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(X)
 
         # 2. Fit Model
+        # See CHANGELOG.md for why class_weight='balanced' was tried and rejected here.
         self.model = RandomForestClassifier(n_estimators=100, random_state=42)
         self.model.fit(X_scaled, y)
 

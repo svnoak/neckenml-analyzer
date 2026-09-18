@@ -205,7 +205,7 @@ class StyleClassifier:
             if punchiness < 0.1:
                 return heuristic_result("Slängpolska", 0.35, "Smooth/Flowing Texture")
 
-            # Mazurka Logic: Ternary with accent on beat 2 or 3, often high swing
+            # Mazurka Logic: elevated swing, weakly correlated with ratios[1] > ratios[0]
             # Swing thresholds are parameterized for optimization
             if swing > self.params.mazurka_swing_high or (swing > self.params.mazurka_swing_medium and ratios[1] > ratios[0]):
                 return heuristic_result("Mazurka", 0.38,
@@ -424,6 +424,12 @@ class StyleClassifier:
 
         if style == "Vals":
             add_secondary("Polska", "Smooth 3/4", confidence_penalty=0.5)
+            # See CHANGELOG.md for why Menuett is offered here as a secondary style.
+            if self.params.menuett_swing_min <= swing <= self.params.menuett_swing_max:
+                add_secondary("Menuett", "Even, graceful swing within Menuett range", confidence_penalty=0.6)
+
+        if style == "Menuett":
+            add_secondary("Vals", "Compatible even 3/4 rhythm", confidence_penalty=0.6)
 
         return secondaries
 
