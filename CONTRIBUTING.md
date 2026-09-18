@@ -146,21 +146,16 @@ We welcome code contributions! Here are some areas where help is needed:
 
 ```
 neckenml-analyzer/
-├── neckenml/
-│   ├── analyzer/          # Core audio analysis
-│   │   ├── audio_analyzer.py
-│   │   └── extractors/    # Feature extractors
-│   ├── classifier/        # Style classification
-│   ├── sources/          # Audio source implementations
-│   ├── training/         # Model training
-│   └── models/           # Database models
-├── tests/                # Unit tests
-│   ├── test_analyzer.py
-│   ├── test_classifier.py
-│   └── fixtures/         # Test audio files
-├── docs/                 # Documentation
-├── examples/             # Example scripts
-└── pyproject.toml        # Package configuration
+├── packages/
+│   ├── neckenml-core/       # MIT: classification from stored features
+│   │   └── src/neckenml/core/
+│   ├── neckenml-analyzer/   # AGPL-3.0: audio analysis (Essentia, madmom)
+│   │   └── src/neckenml/analyzer/
+│   └── neckenml/            # AGPL-3.0: meta-package
+├── tests/
+│   ├── core/
+│   └── analyzer/
+└── pyproject.toml           # Shared tool configuration
 ```
 
 ## Coding Standards
@@ -184,10 +179,10 @@ We use **Black** for code formatting:
 
 ```bash
 # Format your code
-black neckenml/ tests/
+black packages/ tests/
 
 # Check formatting
-black --check neckenml/ tests/
+black --check packages/ tests/
 ```
 
 ### Type Hints
@@ -326,15 +321,17 @@ Write clear, descriptive commit messages:
 **Types:**
 - `feat`: New feature
 - `fix`: Bug fix
-- `docs`: Documentation changes
+- `refactor`: Code refactoring, including performance improvements
 - `test`: Adding or updating tests
-- `refactor`: Code refactoring
-- `perf`: Performance improvements
+- `docs`: Documentation changes
 - `chore`: Maintenance tasks
+- `style`: Formatting only
+
+Write the summary in lowercase and in the imperative. Do not use emojis.
 
 **Examples:**
 ```
-feat: Add support for 5/4 meter detection
+feat: add support for 5/4 meter detection
 
 Implemented detection logic for irregular 5/4 meter commonly
 found in modern folk fusion. Uses specialized beat tracking
@@ -344,7 +341,7 @@ Closes #42
 ```
 
 ```
-fix: Correct swing ratio calculation for triplet feels
+fix: correct swing ratio calculation for triplet feels
 
 Previous calculation incorrectly weighted the first beat.
 Now properly calculates median IOI ratio as per Butterfield (2006).
@@ -354,9 +351,9 @@ Fixes #103
 
 ### Pull Request Process
 
-1. **Create a feature branch:**
+1. **Create a branch with the commit type as prefix:**
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b feat/short-description
    ```
 
 2. **Make your changes:**
@@ -367,50 +364,29 @@ Fixes #103
 3. **Run tests and linting:**
    ```bash
    pytest
-   black --check neckenml/ tests/
+   black --check packages/ tests/
+   flake8 packages/ tests/
    ```
 
 4. **Commit your changes:**
    ```bash
    git add .
-   git commit -m "feat: Add feature description"
+   git commit -m "feat: add feature description"
    ```
 
 5. **Push to your fork:**
    ```bash
-   git push origin feature/your-feature-name
+   git push origin feat/short-description
    ```
 
-6. **Create Pull Request:**
-   - Provide clear description of changes
-   - Reference related issues
-   - Include test results
-   - Add screenshots/examples if relevant
+6. **Create a pull request.** Keep the description short:
+   ```markdown
+   Closes #123
 
-**Pull Request Template:**
-```markdown
-## Description
-Brief description of what this PR does.
+   **Why:** One line: why this change is necessary.
 
-## Related Issues
-Fixes #123
-Related to #456
-
-## Changes
-- Added X feature
-- Fixed Y bug
-- Improved Z performance
-
-## Testing
-- [ ] Added unit tests
-- [ ] All tests pass
-- [ ] Tested with sample audio files
-
-## Documentation
-- [ ] Updated docstrings
-- [ ] Updated README if needed
-- [ ] Added examples if needed
-```
+   **What:** One line: what this change does.
+   ```
 
 ### Code Review Process
 
