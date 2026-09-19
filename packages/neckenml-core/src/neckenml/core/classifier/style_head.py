@@ -129,10 +129,10 @@ class ClassificationHead:
             print("Action: You need to re-analyze tracks to generate new 217-len vectors.")
             return
 
-        print(f"Training Head on {len(labels)} examples...")
+        print(f"Training Head on {len(valid_labels)} examples...")
 
-        X = np.array(embeddings)
-        y = np.array(labels)
+        X = np.array(valid_embeddings)
+        y = np.array(valid_labels)
 
         # 1. Normalize
         self.scaler = StandardScaler()
