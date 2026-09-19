@@ -15,6 +15,8 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import StandardScaler
 
+from neckenml.core.classifier.style_head import ClassificationHead
+
 
 @dataclass
 class EvaluationResult:
@@ -56,9 +58,19 @@ def count_groups_per_class(labels: list, group_ids: list) -> dict[str, int]:
 
 def evaluate_classifier(embeddings, labels, group_ids: list, n_splits: int = 5) -> EvaluationResult:
     """Run grouped cross-validation and pool the out-of-fold predictions."""
-    embeddings = np.asarray(embeddings)
-    labels = np.asarray(labels)
-    group_ids = np.asarray(group_ids)
+    expected_feature_count = ClassificationHead.EXPECTED_FEATURE_COUNT
+    keep_indices = [
+        index
+        for index, embedding in enumerate(embeddings)
+        if len(embedding) == expected_feature_count
+    ]
+    if not keep_indices:
+        raise ValueError(
+            f"No embedding matches the expected feature count of {expected_feature_count}."
+        )
+    embeddings = np.asarray([embeddings[index] for index in keep_indices])
+    labels = np.asarray([labels[index] for index in keep_indices])
+    group_ids = np.asarray([group_ids[index] for index in keep_indices])
 
     splitter = StratifiedGroupKFold(n_splits=n_splits)
 

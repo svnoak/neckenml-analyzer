@@ -135,6 +135,53 @@ class TestEvaluateClassifier:
         assert result.samples_per_class["Hambo"] == 15
         assert set(result.samples_per_class.keys()) == set(result.class_labels)
 
+    def test_drops_a_vector_of_the_wrong_length(self):
+        """A vector whose length differs from the expected feature count is dropped."""
+        embeddings, labels, group_ids = _separable_dataset()
+        embeddings = list(embeddings) + [np.zeros(10)]
+        labels = labels + ["Polska"]
+        group_ids = group_ids + [max(group_ids) + 1]
+
+        result = evaluate_classifier(embeddings, labels, group_ids, n_splits=5)
+
+        assert sum(result.samples_per_class.values()) == len(labels) - 1
+
+    def test_raises_when_no_sample_has_the_expected_feature_count(self):
+        """The harness raises rather than fit a model on zero samples."""
+        rng = np.random.default_rng(11)
+        class_a = rng.normal(loc=0.0, scale=0.5, size=(25, 10))
+        class_b = rng.normal(loc=6.0, scale=0.5, size=(25, 10))
+        embeddings = np.vstack([class_a, class_b])
+        labels = ["Polska"] * 25 + ["Hambo"] * 25
+        group_ids = list(range(len(labels)))
+
+        with pytest.raises(ValueError):
+            evaluate_classifier(embeddings, labels, group_ids, n_splits=5)
+
+    def test_precision_and_recall_follow_the_pooled_confusion_matrix(self):
+        """Precision and recall come from the pooled confusion matrix, not a per-fold average."""
+        rng = np.random.default_rng(5)
+        class_a = rng.normal(loc=0.0, scale=2.5, size=(30, 217))
+        class_b = rng.normal(loc=2.0, scale=2.5, size=(30, 217))
+        class_c = rng.normal(loc=4.0, scale=2.5, size=(30, 217))
+        embeddings = np.vstack([class_a, class_b, class_c])
+        labels = ["Polska"] * 30 + ["Hambo"] * 30 + ["Schottis"] * 30
+        group_ids = list(range(len(labels)))
+
+        result = evaluate_classifier(embeddings, labels, group_ids, n_splits=5)
+
+        matrix = np.array(result.confusion_matrix)
+        assert not np.array_equal(matrix, np.diag(np.diag(matrix)))
+
+        for i, label in enumerate(result.class_labels):
+            column_sum = matrix[:, i].sum()
+            row_sum = matrix[i, :].sum()
+            expected_precision = matrix[i, i] / column_sum if column_sum else 0.0
+            expected_recall = matrix[i, i] / row_sum if row_sum else 0.0
+
+            assert result.precision[label] == pytest.approx(expected_precision)
+            assert result.recall[label] == pytest.approx(expected_recall)
+
     def test_the_harness_writes_no_file(self, tmp_path, monkeypatch):
         """The harness fits and predicts in memory; it constructs no model file."""
 
