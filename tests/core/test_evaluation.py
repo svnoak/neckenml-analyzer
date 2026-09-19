@@ -7,6 +7,7 @@ Tests cover:
 - Running grouped cross-validation over the style classifier (evaluate_classifier)
 - Comparing track/album/artist grouping side by side (evaluate_by_grouping)
 """
+
 import pytest
 import numpy as np
 from pathlib import Path
@@ -118,6 +119,21 @@ class TestEvaluateClassifier:
         result = evaluate_classifier(embeddings, labels, group_ids, n_splits=3)
 
         assert result.groups_per_class["Polska"] == 1
+
+    def test_reports_the_sample_count_for_each_class(self):
+        """samples_per_class holds the true sample count for each class."""
+        rng = np.random.default_rng(3)
+        class_a = rng.normal(loc=0.0, scale=0.5, size=(9, 217))
+        class_b = rng.normal(loc=6.0, scale=0.5, size=(15, 217))
+        embeddings = np.vstack([class_a, class_b])
+        labels = ["Polska"] * 9 + ["Hambo"] * 15
+        group_ids = list(range(len(labels)))
+
+        result = evaluate_classifier(embeddings, labels, group_ids, n_splits=3)
+
+        assert result.samples_per_class["Polska"] == 9
+        assert result.samples_per_class["Hambo"] == 15
+        assert set(result.samples_per_class.keys()) == set(result.class_labels)
 
     def test_the_harness_writes_no_file(self, tmp_path, monkeypatch):
         """The harness fits and predicts in memory; it constructs no model file."""

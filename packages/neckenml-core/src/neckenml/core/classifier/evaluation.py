@@ -25,6 +25,7 @@ class EvaluationResult:
     recall: dict[str, float]
     confusion_matrix: object
     groups_per_class: dict[str, int]
+    samples_per_class: dict[str, int]
     n_splits: int
 
 
@@ -76,7 +77,9 @@ def evaluate_classifier(embeddings, labels, group_ids: list, n_splits: int = 5) 
         true_labels.extend(labels[test_index])
         predicted_labels.extend(predictions)
 
-    class_labels = sorted(set(labels.tolist()))
+    labels_list = labels.tolist()
+    class_labels = sorted(set(labels_list))
+    samples_per_class = {label: labels_list.count(label) for label in class_labels}
 
     precision_values, recall_values, _, _ = precision_recall_fscore_support(
         true_labels, predicted_labels, labels=class_labels, zero_division=0
@@ -89,6 +92,7 @@ def evaluate_classifier(embeddings, labels, group_ids: list, n_splits: int = 5) 
         recall=dict(zip(class_labels, recall_values.tolist())),
         confusion_matrix=matrix,
         groups_per_class=count_groups_per_class(labels.tolist(), group_ids.tolist()),
+        samples_per_class=samples_per_class,
         n_splits=n_splits,
     )
 

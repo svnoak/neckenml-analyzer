@@ -16,7 +16,16 @@ Usage:
 __version__ = "0.3.0"
 
 from neckenml.core.models import Track, AnalysisSource, TrackDanceStyle, Base
-from neckenml.core.classifier import StyleClassifier, ClassificationHead, ClassifierParams
+from neckenml.core.classifier import (
+    StyleClassifier,
+    ClassificationHead,
+    ClassifierParams,
+    EvaluationResult,
+    evaluate_classifier,
+    evaluate_by_grouping,
+    build_group_ids,
+    count_groups_per_class,
+)
 from neckenml.core.sources import AudioSource, FileAudioSource
 from neckenml.core.training import TrainingService
 from neckenml.core.folk_authenticity import FolkAuthenticityDetector
@@ -32,6 +41,11 @@ __all__ = [
     "StyleClassifier",
     "ClassificationHead",
     "ClassifierParams",
+    "EvaluationResult",
+    "evaluate_classifier",
+    "evaluate_by_grouping",
+    "build_group_ids",
+    "count_groups_per_class",
     # Sources
     "AudioSource",
     "FileAudioSource",
