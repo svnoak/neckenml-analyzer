@@ -4,6 +4,7 @@ Test that all neckenml-core imports work correctly.
 These tests verify the package structure is correct and all public APIs
 are accessible.
 """
+
 import pytest
 
 
@@ -13,8 +14,9 @@ class TestCoreImports:
     def test_import_core_package(self):
         """Test importing the main core package."""
         from neckenml import core
+
         assert core is not None
-        assert hasattr(core, '__version__')
+        assert hasattr(core, "__version__")
 
     def test_import_database_models(self):
         """Test importing database models."""
@@ -59,6 +61,13 @@ class TestCoreImports:
         assert compute_derived_features is not None
         assert callable(compute_derived_features)
 
+    def test_import_evaluation_harness(self):
+        """Test importing the classifier evaluation harness."""
+        from neckenml.core import evaluate_classifier, evaluate_by_grouping
+
+        assert callable(evaluate_classifier)
+        assert callable(evaluate_by_grouping)
+
     def test_all_exports_listed(self):
         """Test that __all__ contains expected exports."""
         from neckenml.core import __all__
@@ -76,6 +85,11 @@ class TestCoreImports:
             "TrainingService",
             "FolkAuthenticityDetector",
             "compute_derived_features",
+            "evaluate_classifier",
+            "evaluate_by_grouping",
+            "build_group_ids",
+            "count_groups_per_class",
+            "EvaluationResult",
         ]
 
         for item in expected:
